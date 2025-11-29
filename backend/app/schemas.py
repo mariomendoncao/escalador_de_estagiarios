@@ -70,6 +70,9 @@ class TraineeAssignmentBase(BaseModel):
 class TraineeAssignmentCreate(TraineeAssignmentBase):
     trainee_id: int
 
+class AssignmentCreate(TraineeAssignmentBase):
+    pass
+
 class TraineeAssignment(TraineeAssignmentBase):
     id: int
     trainee_id: int

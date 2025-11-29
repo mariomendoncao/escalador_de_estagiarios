@@ -125,7 +125,14 @@
                   ✕
                 </button>
               </td>
-              <td v-for="day in days" :key="`${trainee.id}-${day.date}`" class="border border-gray-300 px-1 py-1 text-center font-medium" :class="getCellClass(trainee.id, day.date)">
+              <td
+                v-for="day in days"
+                :key="`${trainee.id}-${day.date}`"
+                @click="handleCellClick($event, trainee.id, day.date)"
+                class="border border-gray-300 px-1 py-1 text-center font-medium"
+                :class="getCellClass(trainee.id, day.date)"
+                :style="canEdit(trainee.id, day.date) ? 'cursor: pointer;' : 'cursor: not-allowed;'"
+              >
                 <span :class="getShiftColor(getShift(trainee.id, day.date))">
                   {{ getCellContent(trainee.id, day.date) }}
                 </span>
@@ -138,6 +145,38 @@
         </table>
       </div>
     </div>
+
+    <!-- Inline Edit Dropdown -->
+    <div
+      v-if="editingCell"
+      class="fixed z-50 bg-white border-2 border-indigo-500 rounded-lg shadow-xl py-1 min-w-[100px]"
+      :style="{ top: dropdownPosition.top + 'px', left: dropdownPosition.left + 'px' }"
+      @click.stop
+    >
+      <button
+        v-for="option in shiftOptions"
+        :key="option.value"
+        @click="selectShift(option.value)"
+        class="w-full px-4 py-2 text-left hover:bg-indigo-50 text-sm font-medium"
+        :class="getCurrentShift() === option.value ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700'"
+      >
+        {{ option.label }}
+      </button>
+      <button
+        v-if="getCurrentShift()"
+        @click="clearShift"
+        class="w-full px-4 py-2 text-left hover:bg-red-50 text-sm font-medium text-red-600 border-t border-gray-200"
+      >
+        Limpar
+      </button>
+    </div>
+
+    <!-- Click-away overlay -->
+    <div
+      v-if="editingCell"
+      class="fixed inset-0 z-40"
+      @click="closeDropdown"
+    ></div>
   </div>
 </template>
 
@@ -152,6 +191,14 @@ const schedule = ref([]);
 const trainees = ref([]);
 const capacities = ref([]);
 const availabilities = ref([]);
+const editingCell = ref(null);
+const dropdownPosition = ref({ top: 0, left: 0 });
+
+const shiftOptions = [
+  { value: 'manha', label: 'M - Manhã' },
+  { value: 'tarde', label: 'T - Tarde' },
+  { value: 'pernoite', label: 'P - Pernoite' }
+];
 
 const days = computed(() => {
   if (!month.value) return [];
@@ -248,21 +295,31 @@ const getShift = (traineeId, date) => {
 
 const isUnavailable = (traineeId, date) => {
   // Check if trainee is unavailable on this date for any shift
-  const unavail = availabilities.value.find(a =>
-    a.trainee_id === traineeId &&
-    a.date === date &&
-    !a.available
-  );
+  const unavail = availabilities.value.find(a => {
+    // Normalize both dates to YYYY-MM-DD format for comparison
+    const availDate = typeof a.date === 'string'
+      ? a.date.slice(0, 10)
+      : new Date(a.date).toISOString().slice(0, 10);
+
+    return a.trainee_id === traineeId &&
+      availDate === date &&
+      !a.available;
+  });
   return !!unavail;
 };
 
 const getUnavailabilityReason = (traineeId, date) => {
   // Get the reason for unavailability on this date
-  const unavail = availabilities.value.find(a =>
-    a.trainee_id === traineeId &&
-    a.date === date &&
-    !a.available
-  );
+  const unavail = availabilities.value.find(a => {
+    // Normalize both dates to YYYY-MM-DD format for comparison
+    const availDate = typeof a.date === 'string'
+      ? a.date.slice(0, 10)
+      : new Date(a.date).toISOString().slice(0, 10);
+
+    return a.trainee_id === traineeId &&
+      availDate === date &&
+      !a.available;
+  });
   if (!unavail) return null;
 
   // Extract first 3 characters and convert to uppercase
@@ -283,12 +340,22 @@ const getCellContent = (traineeId, date) => {
 
 const getCellClass = (traineeId, date) => {
   const classes = [];
+
   if (isWeekend(date)) {
     classes.push('bg-green-100');
   }
+
   if (isUnavailable(traineeId, date) && !getShift(traineeId, date)) {
     classes.push('bg-red-200');
   }
+
+  // Highlight if currently editing
+  if (editingCell.value?.traineeId === traineeId && editingCell.value?.date === date) {
+    classes.push('ring-2 ring-indigo-500 bg-indigo-50');
+  } else if (!isUnavailable(traineeId, date)) {
+    classes.push('hover:bg-blue-50 hover:border-indigo-300');
+  }
+
   return classes.join(' ');
 };
 
@@ -356,6 +423,82 @@ const exportCSV = () => {
   a.href = url;
   a.download = `escala-${month.value}.csv`;
   a.click();
+};
+
+const handleCellClick = (event, traineeId, date) => {
+  // Block if trainee is unavailable
+  if (isUnavailable(traineeId, date)) {
+    return;
+  }
+
+  // Calculate dropdown position below the cell
+  const cell = event.currentTarget;
+  const rect = cell.getBoundingClientRect();
+
+  dropdownPosition.value = {
+    top: rect.bottom + window.scrollY + 2,
+    left: rect.left + window.scrollX
+  };
+
+  editingCell.value = { traineeId, date };
+};
+
+const canEdit = (traineeId, date) => {
+  return !isUnavailable(traineeId, date);
+};
+
+const getCurrentShift = () => {
+  if (!editingCell.value) return null;
+  return getShift(editingCell.value.traineeId, editingCell.value.date);
+};
+
+const closeDropdown = () => {
+  editingCell.value = null;
+};
+
+const selectShift = async (shift) => {
+  if (!editingCell.value) return;
+
+  const { traineeId, date } = editingCell.value;
+
+  try {
+    await api.post(
+      `/months/${month.value}/trainees/${traineeId}/assignments`,
+      { date, shift }
+    );
+
+    await fetchData();
+    closeDropdown();
+  } catch (e) {
+    console.error('Error saving assignment:', e);
+    if (e.response?.data?.detail) {
+      alert(e.response.data.detail);
+    } else {
+      alert('Erro ao salvar escalação');
+    }
+    closeDropdown();
+  }
+};
+
+const clearShift = async () => {
+  if (!editingCell.value) return;
+
+  const { traineeId, date } = editingCell.value;
+
+  try {
+    await api.delete(
+      `/months/${month.value}/trainees/${traineeId}/assignments/${date}`
+    );
+
+    await fetchData();
+    closeDropdown();
+  } catch (e) {
+    console.error('Error clearing assignment:', e);
+    if (e.response?.status !== 404) {
+      alert('Erro ao limpar escalação');
+    }
+    closeDropdown();
+  }
 };
 
 onMounted(fetchData);

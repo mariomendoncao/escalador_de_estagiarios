@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from typing import List
-from .. import crud, schemas, database, parser, scheduler
+from .. import crud, schemas, database, parser, scheduler, models
 
 router = APIRouter(
     tags=["schedule"]
@@ -181,6 +181,97 @@ def clear_trainee_schedule(month: str, trainee_id: int, db: Session = Depends(da
     """Clear schedule assignments for a specific trainee in a month"""
     crud.delete_assignments_for_trainee(db, month, trainee_id)
     return {"message": f"Cleared schedule for trainee {trainee_id} in {month}"}
+
+@router.post("/months/{month}/trainees/{trainee_id}/assignments", response_model=schemas.TraineeAssignment)
+def create_or_update_assignment(
+    month: str,
+    trainee_id: int,
+    assignment: schemas.AssignmentCreate,
+    db: Session = Depends(database.get_db)
+):
+    """
+    Create or update a single assignment for a trainee.
+    If assignment exists for same trainee/date, update the shift.
+    """
+    # Check if trainee exists for this month
+    trainee = db.query(models.Trainee).join(models.MonthlySchedule).filter(
+        models.Trainee.id == trainee_id,
+        models.MonthlySchedule.month == month
+    ).first()
+
+    if not trainee:
+        raise HTTPException(status_code=404, detail="Trainee not found")
+
+    # Check if trainee is available on this date
+    unavailable = db.query(models.TraineeAvailability).join(models.MonthlySchedule).filter(
+        models.TraineeAvailability.trainee_id == trainee_id,
+        models.TraineeAvailability.date == assignment.date,
+        models.TraineeAvailability.available == False,
+        models.MonthlySchedule.month == month
+    ).first()
+
+    if unavailable:
+        raise HTTPException(status_code=400, detail="Trainee is unavailable on this date")
+
+    # Check if assignment already exists
+    schedule = crud.get_schedule_for_month(db, month)
+    existing = db.query(models.TraineeAssignment).filter(
+        models.TraineeAssignment.schedule_id == schedule.id,
+        models.TraineeAssignment.trainee_id == trainee_id,
+        models.TraineeAssignment.date == assignment.date
+    ).first()
+
+    if existing:
+        # Update shift
+        existing.shift = assignment.shift
+        db.commit()
+        db.refresh(existing)
+        return existing
+    else:
+        # Create new assignment
+        new_assignment = models.TraineeAssignment(
+            schedule_id=schedule.id,
+            trainee_id=trainee_id,
+            date=assignment.date,
+            shift=assignment.shift
+        )
+        db.add(new_assignment)
+        db.commit()
+        db.refresh(new_assignment)
+        return new_assignment
+
+@router.delete("/months/{month}/trainees/{trainee_id}/assignments/{date}")
+def delete_assignment(
+    month: str,
+    trainee_id: int,
+    date: str,
+    db: Session = Depends(database.get_db)
+):
+    """
+    Delete a single assignment for a trainee on a specific date.
+    """
+    from datetime import datetime
+
+    # Parse date string to date object
+    try:
+        date_obj = datetime.strptime(date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    schedule = crud.get_schedule_for_month(db, month)
+
+    assignment = db.query(models.TraineeAssignment).filter(
+        models.TraineeAssignment.schedule_id == schedule.id,
+        models.TraineeAssignment.trainee_id == trainee_id,
+        models.TraineeAssignment.date == date_obj
+    ).first()
+
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+
+    db.delete(assignment)
+    db.commit()
+    return {"status": "deleted"}
 
 @router.get("/months/{month}/schedule", response_model=List[schemas.TraineeAssignment])
 def get_schedule(month: str, db: Session = Depends(database.get_db)):
