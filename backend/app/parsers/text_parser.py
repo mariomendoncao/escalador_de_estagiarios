@@ -24,7 +24,7 @@ def parse_unavailability_text(text: str) -> List[Dict[str, Any]]:
     
     lines = [line.strip() for line in text.split('\n') if line.strip()]
     
-    current_reason_header = "Unknown"
+    current_reason_header = None
     current_entry = {}
     
     # Regex for date: DD/MM/YYYY HH:MM or DD/MM/YYYY
@@ -39,16 +39,13 @@ def parse_unavailability_text(text: str) -> List[Dict[str, Any]]:
         is_number = re.match(r"^\d+$", line)
         
         if not is_key_value and not is_number:
-            # Likely a header
-            # Clean up header: "RISAERRIS" -> "RISAER", "Fériasfe" -> "Férias"
-            # Heuristic: remove the last few chars if they look like a suffix?
-            # Or just use it as is. User example: "RISAERRIS", "Fériasfe".
-            # Let's try to be smart: "RISAERRIS" -> RISAER (RIS repeated). "Fériasfe" -> Férias (fe repeated).
-            # "ExpedienteEXP" -> Expediente.
-            # "AN EYE ON YOUAEOY" -> AN EYE ON YOU.
-            # It seems the suffix is the code.
-            # Let's just use the whole line as default reason, or try to clean it.
-            current_reason_header = line
+            # Legend line - extract last 3 characters as code
+            # Examples: "COMISSÃO FISCALIZADORACOM" -> "COM", "RISAERRIS" -> "RIS"
+            cleaned_header = line.strip()
+            if len(cleaned_header) >= 3:
+                current_reason_header = cleaned_header[-3:].upper()
+            else:
+                current_reason_header = cleaned_header.upper()
             i += 1
             continue
             
@@ -61,7 +58,7 @@ def parse_unavailability_text(text: str) -> List[Dict[str, Any]]:
             # Start of a new entry
             if current_entry:
                 entries.append(current_entry)
-            current_entry = {"reason": current_reason_header}
+            current_entry = {"reason": current_reason_header if current_reason_header else "IND"}
             current_entry["name"] = line.split("Nome:", 1)[1].strip()
         
         elif line.startswith("Início:"):

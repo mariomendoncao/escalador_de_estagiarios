@@ -248,12 +248,26 @@ const getShift = (traineeId, date) => {
 
 const isUnavailable = (traineeId, date) => {
   // Check if trainee is unavailable on this date for any shift
-  const unavail = availabilities.value.find(a => 
-    a.trainee_id === traineeId && 
-    a.date === date && 
+  const unavail = availabilities.value.find(a =>
+    a.trainee_id === traineeId &&
+    a.date === date &&
     !a.available
   );
   return !!unavail;
+};
+
+const getUnavailabilityReason = (traineeId, date) => {
+  // Get the reason for unavailability on this date
+  const unavail = availabilities.value.find(a =>
+    a.trainee_id === traineeId &&
+    a.date === date &&
+    !a.available
+  );
+  if (!unavail) return null;
+
+  // Extract first 3 characters and convert to uppercase
+  const reason = unavail.reason || 'IND';
+  return reason.substring(0, 3).toUpperCase();
 };
 
 const getCellContent = (traineeId, date) => {
@@ -262,7 +276,7 @@ const getCellContent = (traineeId, date) => {
     return getShiftCode(shift);
   }
   if (isUnavailable(traineeId, date)) {
-    return 'IND';
+    return getUnavailabilityReason(traineeId, date);
   }
   return '';
 };
@@ -330,12 +344,12 @@ const exportCSV = () => {
   trainees.value.forEach(t => {
     csv += `"${t.name}"`;
     days.value.forEach(d => {
-      const shift = getShift(t.id, d.date);
-      csv += `,${getShiftCode(shift)}`;
+      const content = getCellContent(t.id, d.date);
+      csv += `,${content}`;
     });
     csv += '\n';
   });
-  
+
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');

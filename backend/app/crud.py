@@ -132,13 +132,15 @@ def create_or_update_availability(db: Session, month: str, availability: schemas
 
     if db_availability:
         db_availability.available = availability.available
+        db_availability.reason = availability.reason
     else:
         db_availability = models.TraineeAvailability(
             monthly_schedule_id=schedule.id,
             trainee_id=availability.trainee_id,
             date=availability.date,
             shift=availability.shift,
-            available=availability.available
+            available=availability.available,
+            reason=availability.reason
         )
         db.add(db_availability)
 
@@ -152,7 +154,8 @@ def bulk_create_availability(db: Session, month: str, trainee_id: int, availabil
             trainee_id=trainee_id,
             date=av.date,
             shift=av.shift,
-            available=av.available
+            available=av.available,
+            reason=av.reason
         ))
     return True
 

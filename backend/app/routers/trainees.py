@@ -124,40 +124,17 @@ def import_trainees_text(month: str, body: str = Body(..., media_type="text/plai
             # The input format "Quantidade de dias: 1" suggests day granularity often.
             # But "Expediente" is 13:00 - 19:00. This matches "Tarde".
             
-            # Let's define shift intervals for the current day
-            shifts_def = {
-                "manha": (7, 13),
-                "tarde": (13, 19),
-                "pernoite": (19, 24) # Pernoite starts at 19:00. Ends next day, but for this day's record we care about start.
-            }
-            
+            # Mark ALL shifts as unavailable for this day
             day_availabilities = []
-            
-            # Start/End times for this specific day
-            s_time = start_dt.time() if curr == start_dt.date() else datetime.min.time()
-            e_time = end_dt.time() if curr == end_dt.date() else datetime.max.time()
-            
-            s_hour = s_time.hour
-            e_hour = e_time.hour if e_time.hour > 0 or e_time.minute > 0 else 24
-            if e_hour == 0 and e_time.minute == 0: e_hour = 24 # Handle 00:00 as end of day
-            
-            for shift_name, (start_h, end_h) in shifts_def.items():
-                # Check overlap
-                # Event: [s_hour, e_hour]
-                # Shift: [start_h, end_h]
-                overlap = max(0, min(e_hour, end_h) - max(s_hour, start_h))
-                
-                # If overlap > 0, mark unavailable
-                if overlap > 0:
-                    day_availabilities.append(schemas.TraineeAvailabilityBase(
-                        date=curr,
-                        shift=shift_name,
-                        available=False,
-                        reason=reason
-                    ))
-            
-            if day_availabilities:
-                crud.bulk_create_availability(db, month, trainee_id, day_availabilities)
+            for shift_name in ["manha", "tarde", "pernoite"]:
+                day_availabilities.append(schemas.TraineeAvailabilityBase(
+                    date=curr,
+                    shift=shift_name,
+                    available=False,
+                    reason=reason
+                ))
+
+            crud.bulk_create_availability(db, month, trainee_id, day_availabilities)
                 
             curr += timedelta(days=1)
             
