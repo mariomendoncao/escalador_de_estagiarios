@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sqlalchemy
+alembic
+pymysql
+cryptography
+pydantic
+python-multipart
+beautifulsoup4
