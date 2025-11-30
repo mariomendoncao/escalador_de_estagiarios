@@ -6,28 +6,16 @@ O frontend estava configurado com URL hardcoded (`http://localhost:8000`) para a
 
 ## Solução Implementada
 
-Agora a URL da API é configurável via variável de ambiente.
+A URL da API foi configurada diretamente no docker-compose.yml como `http://mmendol.com:8000`.
 
-## Passos para Deploy na VPS Hostinger
+## Passos para Deploy na VPS Hostinger (92.112.178.78)
 
-### 1. Criar arquivo .env na VPS
+### 1. Fazer upload das alterações para a VPS
 
-No diretório do projeto na VPS, crie um arquivo `.env`:
-
-```bash
-nano .env
-```
-
-Adicione o conteúdo (substitua `SEU_IP_OU_DOMINIO` pelo IP ou domínio da sua VPS):
-
-```env
-VITE_API_URL=http://SEU_IP_OU_DOMINIO:8000
-```
-
-Exemplos:
-- Se seu IP é `123.45.67.89`: `VITE_API_URL=http://123.45.67.89:8000`
-- Se tem domínio `exemplo.com`: `VITE_API_URL=http://exemplo.com:8000`
-- Se usar HTTPS: `VITE_API_URL=https://exemplo.com:8000`
+Envie os arquivos atualizados:
+- `frontend/src/api.js`
+- `frontend/Dockerfile`
+- `docker-compose.yml`
 
 ### 2. Rebuild e restart dos containers
 
@@ -101,11 +89,15 @@ Certifique-se de que as portas estão abertas:
 
 ### Se o frontend não conseguir se conectar à API:
 
-1. Abra o console do navegador (F12)
+1. Abra o console do navegador (F12) em `http://mmendol.com`
 2. Verifique se há erros de CORS ou conexão
-3. Confirme que a URL da API no console está correta
-4. Verifique se o arquivo `.env` foi criado corretamente
+3. Confirme que a URL da API no console está correta (`http://mmendol.com:8000`)
+4. Verifique se a porta 8000 está aberta no firewall
+
+## Configuração do Domínio
+
+Certifique-se de que o DNS do domínio `mmendol.com` aponta para o IP `92.112.178.78`.
 
 ## Nota sobre CORS
 
-Se você estiver usando um domínio diferente para o frontend e a API, pode precisar configurar CORS no backend. O backend já tem CORS configurado, mas verifique se o domínio está permitido.
+O backend já tem CORS configurado para aceitar requisições. Se houver problemas, verifique os logs da API.
