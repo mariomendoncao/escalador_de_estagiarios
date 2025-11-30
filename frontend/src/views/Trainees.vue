@@ -42,6 +42,25 @@
       </div>
     </div>
 
+    <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
+      <div class="md:grid md:grid-cols-3 md:gap-6">
+        <div class="md:col-span-1">
+          <h3 class="text-lg font-medium leading-6 text-gray-900">Copy from Previous Month</h3>
+          <p class="mt-1 text-sm text-gray-500">
+            Copy all trainees from the previous month, including their active/inactive status.
+          </p>
+        </div>
+        <div class="mt-5 md:mt-0 md:col-span-2">
+          <button
+            @click="copyFromPreviousMonth"
+            class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+          >
+            Copiar Estagiários do Mês Anterior
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="flex flex-col">
       <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
         <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
@@ -163,6 +182,25 @@ const toggleActive = async (trainee) => {
     fetchTrainees();
   } catch (e) {
     console.error('Error toggling trainee:', e);
+  }
+};
+
+const copyFromPreviousMonth = async () => {
+  if (!confirm('Copiar todos os estagiários do mês anterior? Estagiários já existentes não serão duplicados.')) {
+    return;
+  }
+
+  try {
+    const response = await api.post(`/months/${selectedMonth.value}/trainees/copy-from-previous`);
+    alert(response.data.message);
+    fetchTrainees();
+  } catch (e) {
+    console.error('Error copying trainees:', e);
+    if (e.response?.data?.detail) {
+      alert(`Erro: ${e.response.data.detail}`);
+    } else {
+      alert('Erro ao copiar estagiários do mês anterior');
+    }
   }
 };
 

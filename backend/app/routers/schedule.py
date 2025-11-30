@@ -49,6 +49,73 @@ def update_monthly_schedule_parameters(
     db.refresh(schedule)
     return schedule
 
+@router.post("/months/{month}/trainees/copy-from-previous")
+def copy_trainees_from_previous_month(month: str, db: Session = Depends(database.get_db)):
+    """Copy all trainees from the previous month to the current month"""
+    from datetime import datetime
+    
+    # Parse the target month
+    try:
+        target_date = datetime.strptime(month, "%Y-%m")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM")
+    
+    # Calculate previous month
+    year = target_date.year
+    month_num = target_date.month
+    
+    if month_num == 1:
+        previous_year = year - 1
+        previous_month_num = 12
+    else:
+        previous_year = year
+        previous_month_num = month_num - 1
+    
+    previous_month = f"{previous_year:04d}-{previous_month_num:02d}"
+    
+    # Get or create target monthly schedule
+    target_schedule = crud.get_or_create_monthly_schedule(db, month)
+    
+    # Get previous month's schedule
+    previous_schedule = crud.get_monthly_schedule(db, previous_month)
+    if not previous_schedule:
+        raise HTTPException(status_code=404, detail=f"No schedule found for previous month {previous_month}")
+    
+    # Get all trainees from previous month
+    previous_trainees = crud.get_trainees_for_month(db, previous_month)
+    
+    if not previous_trainees:
+        raise HTTPException(status_code=404, detail=f"No trainees found in previous month {previous_month}")
+    
+    # Copy trainees to target month
+    copied_count = 0
+    for prev_trainee in previous_trainees:
+        # Check if trainee already exists in target month
+        existing = db.query(models.Trainee).filter(
+            models.Trainee.monthly_schedule_id == target_schedule.id,
+            models.Trainee.name == prev_trainee.name
+        ).first()
+        
+        if not existing:
+            # Create new trainee with same name and active status
+            new_trainee = models.Trainee(
+                monthly_schedule_id=target_schedule.id,
+                name=prev_trainee.name,
+                active=prev_trainee.active
+            )
+            db.add(new_trainee)
+            copied_count += 1
+    
+    db.commit()
+    
+    return {
+        "status": "ok",
+        "message": f"Copied {copied_count} trainees from {previous_month} to {month}",
+        "copied_count": copied_count,
+        "previous_month": previous_month
+    }
+
+
 # Instructor Capacity
 @router.post("/months/{month}/instructor-capacity/import")
 def import_capacity_with_month(month: str, body: str = Body(..., media_type="text/plain"), db: Session = Depends(database.get_db)):
