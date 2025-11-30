@@ -3,6 +3,7 @@ from sqlalchemy import extract
 from . import crud, models, schemas
 from datetime import date, timedelta
 import calendar
+import math
 from collections import defaultdict
 
 def generate_schedule(db: Session, month_str: str):
@@ -101,10 +102,10 @@ def generate_schedule(db: Session, month_str: str):
         # Actually, we update them at the end of the day based on if they worked.
         
         for shift in shifts_order:
-            # Capacity is half of total instructors (rounded down)
-            required_capacity = capacity_map.get((current_date, shift), 0) // 2
+            # Capacity is half of total instructors (rounded up)
+            required_capacity = math.ceil(capacity_map.get((current_date, shift), 0) / 2)
             if required_capacity <= 0:
-                continue
+                continue;
             
             # Filter candidates
             candidates = []

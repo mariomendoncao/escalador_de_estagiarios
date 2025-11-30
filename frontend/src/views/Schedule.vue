@@ -1,202 +1,244 @@
 <template>
-  <div class="space-y-6">
-    <div class="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
-      <div class="flex justify-between items-center">
+  <div class="w-full bg-slate-50 min-h-screen">
+    <!-- Header Section -->
+    <div class="bg-white shadow-sm border-b border-slate-200 px-4 py-3">
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
         <div class="flex items-center space-x-4">
-          <label for="month" class="block text-sm font-medium text-gray-700">Mês</label>
-          <input type="month" id="month" v-model="month" @change="fetchData" class="focus:ring-indigo-500 focus:border-indigo-500 block shadow-sm sm:text-sm border-gray-300 rounded-md">
+          <label for="month" class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Mês de Referência</label>
+          <input 
+            type="month" 
+            id="month" 
+            v-model="month" 
+            @change="fetchData" 
+            class="focus:ring-indigo-500 focus:border-indigo-500 block shadow-sm text-xs border-slate-300 rounded px-2 py-1"
+          >
         </div>
-        <div class="flex space-x-4">
-          <button @click="generateSchedule" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-            Gerar Escala
+        <div class="flex flex-wrap gap-2">
+          <button @click="generateSchedule" class="inline-flex items-center justify-center py-1.5 px-3 border border-transparent shadow-sm text-xs font-medium rounded text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+            <span class="mr-1">⚡</span> Gerar
           </button>
-          <button @click="clearSchedule" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-            Limpar Escala
+          <button @click="clearSchedule" class="inline-flex items-center justify-center py-1.5 px-3 border border-transparent shadow-sm text-xs font-medium rounded text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-colors">
+            <span class="mr-1">🗑️</span> Limpar
           </button>
-          <button @click="exportCSV" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-            Exportar CSV
+          <button @click="exportCSV" class="inline-flex items-center justify-center py-1.5 px-3 border border-slate-300 shadow-sm text-xs font-medium rounded text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+            <span class="mr-1">📥</span> Exportar
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="border-b border-gray-200">
-      <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+    <!-- Navigation Tabs -->
+    <div class="bg-white border-b border-slate-200 px-4">
+      <nav class="-mb-px flex space-x-6" aria-label="Tabs">
         <button
           @click="currentTab = 'schedule'"
           :class="[
             currentTab === 'schedule'
               ? 'border-indigo-500 text-indigo-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-            'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300',
+            'whitespace-nowrap py-3 px-1 border-b-2 font-medium text-xs transition-colors'
           ]"
         >
-          Escala
+          📅 Escala
         </button>
         <button
           @click="currentTab = 'parameters'"
           :class="[
             currentTab === 'parameters'
               ? 'border-indigo-500 text-indigo-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-            'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300',
+            'whitespace-nowrap py-3 px-1 border-b-2 font-medium text-xs transition-colors'
           ]"
         >
-          Parâmetros
+          ⚙️ Parâmetros
         </button>
       </nav>
     </div>
 
     <!-- Schedule View -->
-    <div v-if="currentTab === 'schedule'" class="space-y-6">
-      <!-- Instructor Capacity Table -->
-      <div class="bg-white shadow overflow-x-auto sm:rounded-lg">
-        <div class="px-4 py-3 border-b border-gray-200 bg-blue-600">
-          <h3 class="text-lg font-medium text-white">Instrutores Disponíveis</h3>
-        </div>
-        <div class="inline-block min-w-full align-middle">
-          <table class="min-w-full border-collapse border border-gray-300 text-xs">
+    <div v-if="currentTab === 'schedule'" class="w-full">
+      
+      <!-- Main Schedule Table with Integrated Capacity -->
+      <div class="bg-white shadow-sm border-b border-slate-300 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-300 border-collapse table-fixed">
             <thead>
-              <!-- Days Header -->
-              <tr class="bg-blue-500 text-white">
-                <th class="border border-gray-300 px-1 py-1"></th>
-                <th v-for="day in days" :key="`cap-h-${day.date}`" class="border border-gray-300 px-1 py-1 text-center font-bold" :class="{'bg-green-400 text-black': isWeekend(day.date)}">
-                  {{ day.day }}
+              <!-- Month/Days Header -->
+              <tr class="bg-slate-50">
+                <th class="sticky left-0 z-20 bg-slate-50 px-2 py-2 text-left text-[10px] font-bold text-slate-600 uppercase tracking-wider border-b border-r border-slate-300 w-48">
+                  Estagiário
+                </th>
+                <th 
+                  v-for="day in days" 
+                  :key="day.date" 
+                  class="px-1 py-1 text-center text-[10px] font-semibold text-slate-700 border-b border-r border-slate-300 w-8"
+                  :class="{'bg-purple-50 text-purple-800': isWeekend(day.date)}"
+                >
+                  <div class="flex flex-col items-center leading-tight">
+                    <span>{{ day.day }}</span>
+                    <span class="text-[9px] opacity-75">{{ getDayOfWeekShort(day.date) }}</span>
+                  </div>
+                </th>
+                <th class="px-2 py-2 text-center text-[10px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-300 w-12">
+                  Total
                 </th>
               </tr>
-              <!-- Weekdays Header -->
-              <tr class="bg-blue-100">
-                <th class="border border-gray-300 px-1 py-1"></th>
-                <th v-for="day in days" :key="`cap-w-${day.date}`" class="border border-gray-300 px-1 py-1 text-center text-[10px] uppercase" :class="{'bg-green-300': isWeekend(day.date)}">
-                  {{ day.weekday }}
+
+              <!-- Capacity Rows (Integrated) -->
+              <!-- Manhã -->
+              <tr class="bg-slate-50/50">
+                <th class="sticky left-0 z-10 bg-slate-50/90 px-2 py-1 text-right text-[10px] font-medium text-slate-600 border-b border-r border-slate-200">
+                  Instr. (M)
                 </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white">
-              <!-- Capacity Rows -->
-              <tr class="bg-blue-50">
-                <td class="border border-gray-300 px-2 py-1 font-bold text-gray-900">Manhã</td>
-                <td v-for="day in days" :key="`cap-m-${day.date}`" class="border border-gray-300 px-1 py-1 text-center font-medium" :class="{'bg-green-100': isWeekend(day.date)}">
+                <td 
+                  v-for="day in days" 
+                  :key="`cap-m-${day.date}`" 
+                  class="px-0 py-1 text-center text-[10px] font-bold text-slate-600 border-b border-r border-slate-200"
+                  :class="{'bg-slate-100/50': isWeekend(day.date)}"
+                >
                   {{ getRawInstructorCount(day.date, 'manha') }}
                 </td>
+                <td class="bg-slate-50 border-b border-slate-300"></td>
               </tr>
-              <tr class="bg-blue-50">
-                <td class="border border-gray-300 px-2 py-1 font-bold text-gray-900">Tarde</td>
-                <td v-for="day in days" :key="`cap-t-${day.date}`" class="border border-gray-300 px-1 py-1 text-center font-medium" :class="{'bg-green-100': isWeekend(day.date)}">
+              <!-- Tarde -->
+              <tr class="bg-slate-50/50">
+                <th class="sticky left-0 z-10 bg-slate-50/90 px-2 py-1 text-right text-[10px] font-medium text-slate-600 border-b border-r border-slate-200">
+                  Instr. (T)
+                </th>
+                <td 
+                  v-for="day in days" 
+                  :key="`cap-t-${day.date}`" 
+                  class="px-0 py-1 text-center text-[10px] font-bold text-slate-600 border-b border-r border-slate-200"
+                  :class="{'bg-slate-100/50': isWeekend(day.date)}"
+                >
                   {{ getRawInstructorCount(day.date, 'tarde') }}
                 </td>
+                <td class="bg-slate-50 border-b border-slate-300"></td>
               </tr>
-              <tr class="bg-blue-50">
-                <td class="border border-gray-300 px-2 py-1 font-bold text-gray-900">Pernoite</td>
-                <td v-for="day in days" :key="`cap-p-${day.date}`" class="border border-gray-300 px-1 py-1 text-center font-medium" :class="{'bg-green-100': isWeekend(day.date)}">
+              <!-- Pernoite -->
+              <tr class="bg-slate-50/50">
+                <th class="sticky left-0 z-10 bg-slate-50/90 px-2 py-1 text-right text-[10px] font-medium text-slate-600 border-b border-r border-slate-200">
+                  Instr. (P)
+                </th>
+                <td 
+                  v-for="day in days" 
+                  :key="`cap-p-${day.date}`" 
+                  class="px-0 py-1 text-center text-[10px] font-bold text-slate-600 border-b border-r border-slate-200"
+                  :class="{'bg-slate-100/50': isWeekend(day.date)}"
+                >
                   {{ getRawInstructorCount(day.date, 'pernoite') }}
                 </td>
+                <td class="bg-slate-50 border-b border-slate-300"></td>
               </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-  
-      <!-- Trainee Schedule Table -->
-      <div class="bg-white shadow overflow-x-auto sm:rounded-lg">
-        <div class="inline-block min-w-full align-middle">
-          <table class="min-w-full border-collapse border border-gray-300 text-xs">
-            <thead>
-              <!-- Summary Rows -->
-              <tr class="bg-red-100">
-                <th class="border border-gray-300 px-1 py-1 text-left font-medium text-gray-900 w-48">Manhã</th>
-                <th v-for="day in days" :key="`m-${day.date}`" class="border border-gray-300 px-1 py-1 text-center font-medium text-gray-900 w-8" :class="{'bg-green-100': isWeekend(day.date)}">
-                  {{ getShiftCount(day.date, 'manha') }}
+
+              <!-- Escalados / Vagas Summary -->
+              <tr class="bg-slate-100">
+                <th class="sticky left-0 z-10 bg-slate-100 px-2 py-2 text-right text-[10px] font-bold text-slate-700 border-b border-r border-slate-300">
+                  Escalados / Vagas
                 </th>
+                <td 
+                  v-for="day in days" 
+                  :key="`summary-${day.date}`" 
+                  class="px-0 py-1 border-b border-r border-slate-300"
+                >
+                  <div class="flex flex-col items-center space-y-0.5">
+                    <div :class="getSummaryClass(day.date, 'manha')" class="rounded px-0.5 w-full text-center text-[10px] font-bold">{{ getShiftCount(day.date, 'manha') }}</div>
+                    <div :class="getSummaryClass(day.date, 'tarde')" class="rounded px-0.5 w-full text-center text-[10px] font-bold">{{ getShiftCount(day.date, 'tarde') }}</div>
+                    <div :class="getSummaryClass(day.date, 'pernoite')" class="rounded px-0.5 w-full text-center text-[10px] font-bold">{{ getShiftCount(day.date, 'pernoite') }}</div>
+                  </div>
+                </td>
+                <td class="bg-slate-50 border-b border-slate-300"></td>
               </tr>
-              <tr class="bg-red-100">
-                <th class="border border-gray-300 px-1 py-1 text-left font-medium text-gray-900">Tarde</th>
-                <th v-for="day in days" :key="`t-${day.date}`" class="border border-gray-300 px-1 py-1 text-center font-medium text-gray-900" :class="{'bg-green-100': isWeekend(day.date)}">
-                  {{ getShiftCount(day.date, 'tarde') }}
+
+              <!-- Duplicated Month/Days Header -->
+              <tr class="bg-slate-50">
+                <th class="sticky left-0 z-20 bg-slate-50 px-2 py-2 text-left text-[10px] font-bold text-slate-600 uppercase tracking-wider border-b border-r border-slate-300 w-48">
+                  Estagiário
                 </th>
-              </tr>
-              <tr class="bg-red-100">
-                <th class="border border-gray-300 px-1 py-1 text-left font-medium text-gray-900">Pernoite</th>
-                <th v-for="day in days" :key="`p-${day.date}`" class="border border-gray-300 px-1 py-1 text-center font-medium text-gray-900" :class="{'bg-green-100': isWeekend(day.date)}">
-                  {{ getShiftCount(day.date, 'pernoite') }}
+                <th 
+                  v-for="day in days" 
+                  :key="`dup-header-${day.date}`" 
+                  class="px-1 py-1 text-center text-[10px] font-semibold text-slate-700 border-b border-r border-slate-300 w-8"
+                  :class="{'bg-purple-50 text-purple-800': isWeekend(day.date)}"
+                >
+                  <div class="flex flex-col items-center leading-tight">
+                    <span>{{ day.day }}</span>
+                    <span class="text-[9px] opacity-75">{{ getDayOfWeekShort(day.date) }}</span>
+                  </div>
                 </th>
-              </tr>
-              
-              <!-- Header Separator -->
-              <tr>
-                <th :colspan="days.length + 1" class="border border-gray-300 px-1 py-1 bg-orange-600 text-white text-center font-bold uppercase tracking-wider">
-                  {{ getMonthName(month) }}
+                <th class="px-2 py-2 text-center text-[10px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-300 w-12">
+                  Total
                 </th>
-              </tr>
-  
-              <!-- Days Header -->
-              <tr class="bg-orange-500 text-white">
-                <th class="border border-gray-300 px-1 py-1"></th>
-                <th v-for="day in days" :key="`h-${day.date}`" class="border border-gray-300 px-1 py-1 text-center font-bold" :class="{'bg-green-400 text-black': isWeekend(day.date)}">
-                  {{ day.day }}
-                </th>
-                <th class="border border-gray-300 px-1 py-1 text-center font-bold">Total</th>
-              </tr>
-              <!-- Weekdays Header -->
-              <tr class="bg-orange-100">
-                <th class="border border-gray-300 px-1 py-1"></th>
-                <th v-for="day in days" :key="`w-${day.date}`" class="border border-gray-300 px-1 py-1 text-center text-[10px] uppercase" :class="{'bg-green-300': isWeekend(day.date)}">
-                  {{ day.weekday }}
-                </th>
-                <th class="border border-gray-300 px-1 py-1"></th>
               </tr>
             </thead>
-            <tbody class="bg-white">
-              <tr v-for="trainee in trainees" :key="trainee.id">
-                <td class="border border-gray-300 px-2 py-1 font-bold text-gray-900 whitespace-nowrap flex items-center justify-between">
-                  <span>{{ trainee.name }}</span>
-                  <button @click="clearTraineeSchedule(trainee.id)" class="ml-2 text-red-600 hover:text-red-800 text-xs" title="Limpar escala deste estagiário">
-                    ✕
-                  </button>
+            
+            <tbody class="bg-white divide-y divide-slate-300">
+              <tr v-for="trainee in trainees" :key="trainee.id" class="hover:bg-slate-50 transition-colors">
+                <td class="sticky left-0 z-10 bg-white px-2 py-1 whitespace-nowrap text-xs font-medium text-slate-900 border-r border-slate-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                  {{ trainee.name }}
                 </td>
-                <td
-                  v-for="day in days"
-                  :key="`${trainee.id}-${day.date}`"
-                  @click="handleCellClick($event, trainee.id, day.date)"
-                  class="border border-gray-300 px-1 py-1 text-center font-medium"
-                  :class="getCellClass(trainee.id, day.date)"
-                  :style="canEdit(trainee.id, day.date) ? 'cursor: pointer;' : 'cursor: not-allowed;'"
+                <td 
+                  v-for="day in days" 
+                  :key="`${trainee.id}-${day.date}`" 
+                  class="px-0 py-0 text-center border-r border-slate-300 relative h-8 w-8 p-0"
+                  :class="{
+                    'bg-purple-50': isWeekend(day.date),
+                    'bg-red-50': isUnavailable(trainee.id, day.date)
+                  }"
                 >
-                  <span v-if="isLoading(trainee.id, day.date)" class="inline-block animate-spin">⏳</span>
-                  <span v-else :class="getShiftColor(getShift(trainee.id, day.date))">
-                    {{ getCellContent(trainee.id, day.date) }}
-                  </span>
+                  <div 
+                    class="w-full h-full flex items-center justify-center text-xs cursor-pointer hover:bg-blue-50 transition-colors"
+                    @click="handleCellClick($event, trainee.id, day.date)"
+                  >
+                    <!-- Loading Spinner -->
+                    <div v-if="loadingCell === `${trainee.id}-${day.date}`" class="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                    
+                    <!-- Show both shift and unavailability if both exist -->
+                    <div v-else-if="getAssignment(trainee.id, day.date) && isUnavailable(trainee.id, day.date)" class="flex flex-col items-center leading-none">
+                      <span :class="getShiftClass(getAssignment(trainee.id, day.date))">
+                        {{ getAssignment(trainee.id, day.date) }}
+                      </span>
+                      <span class="text-red-600 text-[8px] font-bold tracking-tighter mt-0.5">{{ getUnavailabilityReason(trainee.id, day.date) }}</span>
+                    </div>
+                    
+                    <!-- Shift Content only -->
+                    <span v-else-if="getAssignment(trainee.id, day.date)" :class="getShiftClass(getAssignment(trainee.id, day.date))">
+                      {{ getAssignment(trainee.id, day.date) }}
+                    </span>
+                    
+                    <!-- Unavailable only -->
+                    <span v-else-if="isUnavailable(trainee.id, day.date)" class="text-red-600 text-[9px] font-bold tracking-tighter">{{ getUnavailabilityReason(trainee.id, day.date) }}</span>
+                  </div>
                 </td>
-                <td class="border border-gray-300 px-1 py-1 text-center font-bold text-gray-900">
-                  {{ getTraineeDayCount(trainee.id) }}
+                <td class="px-2 py-1 whitespace-nowrap text-center text-xs font-bold text-slate-700">
+                  {{ getTraineeTotal(trainee.id) }}
                 </td>
               </tr>
             </tbody>
+
+
           </table>
         </div>
       </div>
-  
-      <!-- Inline Edit Dropdown -->
-      <div
-        v-if="editingCell"
-        class="fixed z-50 bg-white border-2 border-indigo-500 rounded-lg shadow-xl py-1 min-w-[100px]"
+
+      <!-- Dropdown Menu -->
+      <div 
+        v-if="editingCell" 
+        class="fixed z-50 bg-white shadow-xl rounded border border-slate-200 py-1 w-28 transform transition-all duration-200 ease-out"
         :style="{ top: dropdownPosition.top + 'px', left: dropdownPosition.left + 'px' }"
-        @click.stop
       >
-        <button
-          v-for="option in shiftOptions"
+        <button 
+          v-for="option in shiftOptions" 
           :key="option.value"
-          @click="selectShift(option.value)"
-          class="w-full px-4 py-2 text-left hover:bg-indigo-50 text-sm font-medium"
-          :class="getCurrentShift() === option.value ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700'"
+          @click="setShift(option.value)"
+          class="block w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
         >
           {{ option.label }}
         </button>
         <button
           v-if="getCurrentShift()"
           @click="clearShift"
-          class="w-full px-4 py-2 text-left hover:bg-red-50 text-sm font-medium text-red-600 border-t border-gray-200"
+          class="w-full px-3 py-1.5 text-left hover:bg-red-50 text-xs font-medium text-red-600 border-t border-gray-200"
         >
           Limpar
         </button>
@@ -432,13 +474,16 @@ const getRawInstructorCount = (date, shift) => {
 
 const getCapacity = (date, shift) => {
   const totalInstructors = getRawInstructorCount(date, shift);
-  return Math.floor(totalInstructors / 2);
+  return Math.ceil(totalInstructors / 2);
 };
 
 const isWeekend = (dateStr) => {
-  const d = new Date(dateStr);
-  const day = d.getDay();
-  return day === 0 || day === 6; // 0 is Sunday, 6 is Saturday
+  // Create date object and adjust for timezone if necessary, or just use UTC to avoid shifts
+  // App uses YYYY-MM-DD strings.
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+  return dayOfWeek === 0 || dayOfWeek === 6;
 };
 
 const getMonthName = (monthStr) => {
@@ -446,6 +491,47 @@ const getMonthName = (monthStr) => {
   const [y, m] = monthStr.split('-');
   const date = new Date(y, m - 1, 1);
   return date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase();
+};
+
+const getDayOfWeekShort = (dateStr) => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  return weekdays[date.getDay()];
+};
+
+const getAssignment = (traineeId, date) => {
+  const assignment = schedule.value.find(s => s.trainee_id === traineeId && s.date === date);
+  if (!assignment) return '';
+  
+  const shiftMap = {
+    'manha': 'M',
+    'tarde': 'T',
+    'pernoite': 'P'
+  };
+  return shiftMap[assignment.shift] || '';
+};
+
+const getShiftClass = (shift) => {
+  const classes = {
+    'M': 'text-blue-700 font-bold bg-blue-100 px-1 rounded',
+    'T': 'text-blue-700 font-bold bg-blue-100 px-1 rounded',
+    'P': 'text-blue-700 font-bold bg-blue-100 px-1 rounded'
+  };
+  return classes[shift] || '';
+};
+
+const getTraineeTotal = (traineeId) => {
+  return schedule.value.filter(s => s.trainee_id === traineeId).length;
+};
+
+const getSummaryClass = (date, shift) => {
+  const assigned = parseInt(getShiftCount(date, shift).split('/')[0]);
+  const capacity = getCapacity(date, shift);
+  
+  if (assigned < capacity) return 'text-amber-600 bg-amber-100';
+  if (assigned === capacity) return 'text-green-600 bg-green-100';
+  return 'text-red-600 bg-red-100';
 };
 
 const exportCSV = () => {
@@ -473,10 +559,10 @@ const exportCSV = () => {
 };
 
 const handleCellClick = (event, traineeId, date) => {
-  // Block if trainee is unavailable
-  if (isUnavailable(traineeId, date)) {
-    return;
-  }
+  // Allow editing even if unavailable
+  // if (isUnavailable(traineeId, date)) {
+  //   return;
+  // }
 
   // Calculate dropdown position below or above the cell
   const cell = event.currentTarget;
@@ -516,7 +602,7 @@ const closeDropdown = () => {
   editingCell.value = null;
 };
 
-const selectShift = async (shift) => {
+const setShift = async (shift) => {
   if (!editingCell.value) return;
 
   const { traineeId, date } = editingCell.value;
@@ -525,7 +611,7 @@ const selectShift = async (shift) => {
   closeDropdown();
   
   // Set loading state
-  loadingCell.value = { traineeId, date };
+  loadingCell.value = `${traineeId}-${date}`;
 
   try {
     await api.post(
@@ -534,13 +620,9 @@ const selectShift = async (shift) => {
     );
 
     await fetchData();
-  } catch (e) {
-    console.error('Error saving assignment:', e);
-    if (e.response?.data?.detail) {
-      alert(e.response.data.detail);
-    } else {
-      alert('Erro ao salvar escalação');
-    }
+  } catch (error) {
+    console.error('Error setting shift:', error);
+    alert('Error setting shift');
   } finally {
     // Clear loading state
     loadingCell.value = null;

@@ -293,15 +293,25 @@ def create_or_update_assignment(
         raise HTTPException(status_code=404, detail="Trainee not found")
 
     # Check if trainee is available on this date
-    unavailable = db.query(models.TraineeAvailability).join(models.MonthlySchedule).filter(
-        models.TraineeAvailability.trainee_id == trainee_id,
-        models.TraineeAvailability.date == assignment.date,
-        models.TraineeAvailability.available == False,
-        models.MonthlySchedule.month == month
-    ).first()
+    # Allow manual assignment even on unavailable dates
+    # unavailable = db.query(models.TraineeAvailability).filter(
+    #     models.TraineeAvailability.trainee_id == trainee_id,
+    #     models.TraineeAvailability.date == assignment.date,
+    #     models.TraineeAvailability.available == False,
+    #     models.TraineeAvailability.id.in_(
+    #         db.query(models.Trainee.id).filter(models.Trainee.id == trainee_id)
+    #     )
+    # ).join(
+    #     models.Trainee
+    # ).join(
+    #     models.MonthlySchedule,
+    #     models.Trainee.monthly_schedule_id == models.MonthlySchedule.id
+    # ).filter(
+    #     models.MonthlySchedule.month == month
+    # ).first()
 
-    if unavailable:
-        raise HTTPException(status_code=400, detail="Trainee is unavailable on this date")
+    # if unavailable:
+    #     raise HTTPException(status_code=400, detail="Trainee is unavailable on this date")
 
     # Check if assignment already exists
     schedule = crud.get_schedule_for_month(db, month)
