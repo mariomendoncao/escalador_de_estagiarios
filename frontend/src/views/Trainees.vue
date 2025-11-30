@@ -119,10 +119,11 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useMonth } from '../composables/useMonth';
 import api from '../api';
 
 const router = useRouter();
-const selectedMonth = ref(localStorage.getItem('selectedMonth') || '');
+const { month: selectedMonth, isValidMonth } = useMonth();
 const trainees = ref([]);
 const newTraineeName = ref('');
 
@@ -138,8 +139,8 @@ const changeMonth = () => {
 };
 
 const fetchTrainees = async () => {
-  if (!selectedMonth.value) {
-    alert('No month selected');
+  if (!isValidMonth.value) {
+    alert('Invalid or missing month. Please select a month.');
     router.push('/');
     return;
   }
@@ -151,7 +152,6 @@ const fetchTrainees = async () => {
     console.error('Error fetching trainees:', e);
     if (e.response && e.response.status === 404) {
       alert('Selected month no longer exists. Please select another month.');
-      localStorage.removeItem('selectedMonth');
       router.push('/');
     }
   }

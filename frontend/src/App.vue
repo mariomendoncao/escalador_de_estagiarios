@@ -11,16 +11,16 @@
               <router-link to="/" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                 Select Month
               </router-link>
-              <router-link to="/import" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+              <router-link v-if="month" :to="`/import/${month}`" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                 Import Data
               </router-link>
-              <router-link to="/trainees" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+              <router-link v-if="month" :to="`/trainees/${month}`" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                 Trainees
               </router-link>
-              <router-link to="/availability" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+              <router-link v-if="month" :to="`/availability/${month}`" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                 Availability
               </router-link>
-              <router-link to="/schedule" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+              <router-link v-if="month" :to="`/schedule/${month}`" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                 Schedule
               </router-link>
             </div>
@@ -36,6 +36,12 @@
     </main>
   </div>
 </template>
+
+<script setup>
+import { useMonth } from './composables/useMonth';
+
+const { month } = useMonth();
+</script>
 
 <style scoped>
 .router-link-active {

@@ -18,6 +18,14 @@ def create_monthly_schedule(request: schemas.MonthlyScheduleCreate, db: Session 
     """Create a new monthly schedule context"""
     return crud.get_or_create_monthly_schedule(db, request.month)
 
+@router.get("/months/{month}", response_model=schemas.MonthlySchedule)
+def get_monthly_schedule(month: str, db: Session = Depends(database.get_db)):
+    """Get a specific monthly schedule with its parameters"""
+    schedule = crud.get_monthly_schedule(db, month)
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Monthly schedule not found")
+    return schedule
+
 @router.delete("/months/{month}")
 def delete_monthly_schedule(month: str, db: Session = Depends(database.get_db)):
     """Delete a monthly schedule and all associated data"""

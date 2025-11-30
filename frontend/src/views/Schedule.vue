@@ -82,6 +82,9 @@
                 <th class="px-2 py-2 text-center text-[10px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-300 w-12">
                   Total
                 </th>
+                <th class="px-2 py-2 text-center text-[10px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-300 w-12">
+                  Etapas
+                </th>
               </tr>
 
               <!-- Capacity Rows (Integrated) -->
@@ -99,6 +102,7 @@
                   {{ getRawInstructorCount(day.date, 'manha') }}
                 </td>
                 <td class="bg-slate-50 border-b border-slate-300"></td>
+                <td class="bg-slate-50 border-b border-slate-300"></td>
               </tr>
               <!-- Tarde -->
               <tr class="bg-slate-50/50">
@@ -114,6 +118,7 @@
                   {{ getRawInstructorCount(day.date, 'tarde') }}
                 </td>
                 <td class="bg-slate-50 border-b border-slate-300"></td>
+                <td class="bg-slate-50 border-b border-slate-300"></td>
               </tr>
               <!-- Pernoite -->
               <tr class="bg-slate-50/50">
@@ -128,6 +133,7 @@
                 >
                   {{ getRawInstructorCount(day.date, 'pernoite') }}
                 </td>
+                <td class="bg-slate-50 border-b border-slate-300"></td>
                 <td class="bg-slate-50 border-b border-slate-300"></td>
               </tr>
 
@@ -148,6 +154,7 @@
                   </div>
                 </td>
                 <td class="bg-slate-50 border-b border-slate-300"></td>
+                <td class="bg-slate-100 border-b border-slate-300"></td>
               </tr>
 
               <!-- Duplicated Month/Days Header -->
@@ -169,22 +176,39 @@
                 <th class="px-2 py-2 text-center text-[10px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-300 w-12">
                   Total
                 </th>
+                <th class="px-2 py-2 text-center text-[10px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-300 w-12">
+                  Etapas
+                </th>
               </tr>
             </thead>
-            
+
             <tbody class="bg-white divide-y divide-slate-300">
               <tr v-for="trainee in trainees" :key="trainee.id" class="hover:bg-slate-50 transition-colors">
                 <td class="sticky left-0 z-10 bg-white px-2 py-1 whitespace-nowrap text-xs font-medium text-slate-900 border-r border-slate-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                  {{ trainee.name }}
+                  <div class="flex items-center justify-between gap-2">
+                    <span>{{ trainee.name }}</span>
+                    <button
+                      @click.stop="clearTraineeSchedule(trainee.id, trainee.name)"
+                      class="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded transition-colors flex-shrink-0"
+                      title="Limpar escala deste estagiário"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </td>
-                <td 
-                  v-for="day in days" 
-                  :key="`${trainee.id}-${day.date}`" 
+                <td
+                  v-for="day in days"
+                  :key="`${trainee.id}-${day.date}`"
                   class="px-0 py-0 text-center border-r border-slate-300 relative h-8 w-8 p-0"
                   :class="{
                     'bg-purple-50': isWeekend(day.date),
-                    'bg-red-50': isUnavailable(trainee.id, day.date)
+                    'bg-red-50': isUnavailable(trainee.id, day.date),
+                    'ring-2 ring-red-300 ring-inset': hasHighViolation(trainee.id, day.date),
+                    'ring-2 ring-orange-300 ring-inset': hasMediumViolation(trainee.id, day.date)
                   }"
+                  :title="getViolationTooltip(trainee.id, day.date)"
                 >
                   <div 
                     class="w-full h-full flex items-center justify-center text-xs cursor-pointer hover:bg-blue-50 transition-colors"
@@ -212,6 +236,10 @@
                 </td>
                 <td class="px-2 py-1 whitespace-nowrap text-center text-xs font-bold text-slate-700">
                   {{ getTraineeTotal(trainee.id) }}
+                </td>
+                <td class="px-2 py-1 whitespace-nowrap text-center text-xs font-bold"
+                    :class="getTraineeEtapas(trainee.id) > 10 ? 'text-red-600' : 'text-slate-700'">
+                  {{ getTraineeEtapas(trainee.id) }}
                 </td>
               </tr>
             </tbody>
@@ -262,12 +290,14 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useMonth } from '../composables/useMonth';
 import api from '../api';
 import ScheduleParameters from '../components/ScheduleParameters.vue';
 
 const router = useRouter();
+const { month: routeMonth, isValidMonth } = useMonth();
 const currentTab = ref('schedule');
-const month = ref(new Date().toISOString().slice(0, 7));
+const month = ref(routeMonth.value || new Date().toISOString().slice(0, 7));
 const schedule = ref([]);
 const trainees = ref([]);
 const capacities = ref([]);
@@ -275,6 +305,13 @@ const availabilities = ref([]);
 const editingCell = ref(null);
 const dropdownPosition = ref({ top: 0, left: 0 });
 const loadingCell = ref(null);
+const scheduleParams = ref({
+  params_total_shifts: 0,
+  params_night_shifts: 0,
+  params_max_consecutive_days_off: 3,
+  params_max_consecutive_work_days: 6,
+  params_post_night_shift_off: false
+});
 
 const shiftOptions = [
   { value: 'manha', label: 'M - Manhã' },
@@ -303,33 +340,33 @@ const days = computed(() => {
 });
 
 const fetchData = async () => {
-  const selectedMonth = localStorage.getItem('selectedMonth');
-  if (selectedMonth) {
-    month.value = selectedMonth;
+  if (routeMonth.value) {
+    month.value = routeMonth.value;
   }
 
-  if (!month.value) {
-    alert('No month selected. Please select a month first.');
+  if (!isValidMonth.value) {
+    alert('Invalid or missing month. Please select a month.');
     router.push('/');
     return;
   }
 
   try {
-    const [traineesRes, scheduleRes, capacitiesRes, availabilitiesRes] = await Promise.all([
+    const [traineesRes, scheduleRes, capacitiesRes, availabilitiesRes, scheduleDataRes] = await Promise.all([
       api.get(`/months/${month.value}/trainees`),
       api.get(`/months/${month.value}/schedule`),
       api.get(`/months/${month.value}/instructor-capacity`),
-      api.get(`/months/${month.value}/availability`)
+      api.get(`/months/${month.value}/availability`),
+      api.get(`/months/${month.value}`)
     ]);
     trainees.value = traineesRes.data.filter(t => t.active); // Only show active trainees
     schedule.value = scheduleRes.data;
     capacities.value = capacitiesRes.data;
     availabilities.value = availabilitiesRes.data;
+    scheduleParams.value = scheduleDataRes.data;
   } catch (e) {
     console.error('Error fetching data:', e);
     if (e.response && e.response.status === 404) {
       alert('Selected month no longer exists. Please select another month.');
-      localStorage.removeItem('selectedMonth');
       router.push('/');
     }
   }
@@ -525,13 +562,157 @@ const getTraineeTotal = (traineeId) => {
   return schedule.value.filter(s => s.trainee_id === traineeId).length;
 };
 
+const getTraineeEtapas = (traineeId) => {
+  return schedule.value.filter(s =>
+    s.trainee_id === traineeId &&
+    (s.shift === 'manha' || s.shift === 'pernoite')
+  ).length;
+};
+
 const getSummaryClass = (date, shift) => {
   const assigned = parseInt(getShiftCount(date, shift).split('/')[0]);
   const capacity = getCapacity(date, shift);
-  
+
   if (assigned < capacity) return 'text-amber-600 bg-amber-100';
   if (assigned === capacity) return 'text-green-600 bg-green-100';
   return 'text-red-600 bg-red-100';
+};
+
+// Validation functions
+const getConsecutiveWorkDays = (traineeId, currentDate) => {
+  let count = 0;
+  const dates = days.value.map(d => d.date).sort();
+  const idx = dates.indexOf(currentDate);
+
+  if (idx < 0) return 0;
+
+  for (let i = idx; i >= 0; i--) {
+    const assignment = getAssignment(traineeId, dates[i]);
+    if (assignment) {
+      count++;
+    } else {
+      break;
+    }
+  }
+
+  return count;
+};
+
+const countNightShifts = (traineeId) => {
+  return schedule.value.filter(
+    a => a.trainee_id === traineeId && a.shift === 'pernoite'
+  ).length;
+};
+
+const workedAfterNightShift = (traineeId, dateStr) => {
+  const dates = days.value.map(d => d.date).sort();
+  const idx = dates.indexOf(dateStr);
+
+  if (idx <= 0) return false;
+
+  const yesterday = dates[idx - 1];
+  const yesterdayAssignment = getAssignment(traineeId, yesterday);
+  const todayAssignment = getAssignment(traineeId, dateStr);
+
+  return yesterdayAssignment === 'P' && todayAssignment;
+};
+
+const getConsecutiveDaysOff = (traineeId, currentDate) => {
+  let count = 0;
+  const dates = days.value.map(d => d.date).sort();
+  const idx = dates.indexOf(currentDate);
+
+  if (idx < 0) return 0;
+
+  // Contar para trás a partir da data atual
+  for (let i = idx; i >= 0; i--) {
+    const assignment = getAssignment(traineeId, dates[i]);
+    const unavailable = isUnavailable(traineeId, dates[i]);
+
+    // Dia de folga = NÃO tem trabalho E NÃO está em afastamento
+    if (!assignment && !unavailable) {
+      count++;
+    } else {
+      break;  // Parar quando encontrar um dia trabalhado ou afastamento
+    }
+  }
+
+  return count;
+};
+
+const checkViolations = (traineeId, dateStr) => {
+  const violations = [];
+
+  // 1. Verificar dias consecutivos de trabalho
+  const consecutiveWork = getConsecutiveWorkDays(traineeId, dateStr);
+  if (consecutiveWork > scheduleParams.value.params_max_consecutive_work_days) {
+    violations.push({
+      type: 'consecutive_work',
+      severity: 'high',
+      message: `${consecutiveWork} dias consecutivos trabalhados (máx: ${scheduleParams.value.params_max_consecutive_work_days})`
+    });
+  }
+
+  // 2. Verificar total de turnos noturnos
+  const nightShifts = countNightShifts(traineeId);
+  if (nightShifts > scheduleParams.value.params_night_shifts) {
+    violations.push({
+      type: 'night_shifts',
+      severity: 'medium',
+      message: `${nightShifts} pernoites (máx: ${scheduleParams.value.params_night_shifts})`
+    });
+  }
+
+  // 3. Verificar total de turnos
+  const totalShifts = getTraineeTotal(traineeId);
+  if (totalShifts > scheduleParams.value.params_total_shifts) {
+    violations.push({
+      type: 'total_shifts',
+      severity: 'medium',
+      message: `${totalShifts} turnos (máx: ${scheduleParams.value.params_total_shifts})`
+    });
+  }
+
+  // 4. Trabalho no dia seguinte ao pernoite (se ativo)
+  if (scheduleParams.value.params_post_night_shift_off) {
+    if (workedAfterNightShift(traineeId, dateStr)) {
+      violations.push({
+        type: 'post_night_work',
+        severity: 'high',
+        message: 'Trabalhou após pernoite'
+      });
+    }
+  }
+
+  // 5. Verificar dias consecutivos de folga
+  const consecutiveOff = getConsecutiveDaysOff(traineeId, dateStr);
+  if (consecutiveOff > scheduleParams.value.params_max_consecutive_days_off) {
+    violations.push({
+      type: 'consecutive_off',
+      severity: 'medium',
+      message: `${consecutiveOff} dias consecutivos de folga (máx: ${scheduleParams.value.params_max_consecutive_days_off})`
+    });
+  }
+
+  return violations;
+};
+
+const hasHighViolation = (traineeId, dateStr) => {
+  const violations = checkViolations(traineeId, dateStr);
+  return violations.some(v => v.severity === 'high');
+};
+
+const hasMediumViolation = (traineeId, dateStr) => {
+  const violations = checkViolations(traineeId, dateStr);
+  return violations.some(v => v.severity === 'medium') &&
+         !violations.some(v => v.severity === 'high');
+};
+
+const getViolationTooltip = (traineeId, dateStr) => {
+  const violations = checkViolations(traineeId, dateStr);
+  if (violations.length === 0) return '';
+
+  return 'Violações: ' + violations.map(v => v.message).join('; ');
 };
 
 const exportCSV = () => {

@@ -126,10 +126,11 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
+import { useMonth } from '../composables/useMonth';
 import api from '../api';
 
 const router = useRouter();
-const month = ref(localStorage.getItem('selectedMonth') || '');
+const { month, isValidMonth } = useMonth();
 const trainees = ref([]);
 const availabilities = ref([]);
 const showModal = ref(false);
@@ -191,8 +192,8 @@ const changeMonth = () => {
 };
 
 const fetchData = async () => {
-  if (!month.value) {
-    alert('Nenhum mês selecionado');
+  if (!isValidMonth.value) {
+    alert('Invalid or missing month. Please select a month.');
     router.push('/');
     return;
   }
@@ -209,7 +210,6 @@ const fetchData = async () => {
     console.error('Error fetching data:', e);
     if (e.response && e.response.status === 404) {
       alert('Mês selecionado não existe mais. Selecione outro mês.');
-      localStorage.removeItem('selectedMonth');
       router.push('/');
     }
   }

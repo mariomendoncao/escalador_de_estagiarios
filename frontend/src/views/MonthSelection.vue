@@ -103,10 +103,8 @@ const createMonth = async () => {
 };
 
 const selectMonth = (month) => {
-  // Store selected month in localStorage
-  localStorage.setItem('selectedMonth', month);
-  // Redirect to import page
-  router.push('/import');
+  // Redirect to import page with month in URL
+  router.push(`/import/${month}`);
 };
 
 const deleteMonth = async (month) => {
@@ -116,12 +114,6 @@ const deleteMonth = async (month) => {
 
   try {
     await api.delete(`/months/${month}`);
-
-    // Clear localStorage if the deleted month was selected
-    const selectedMonth = localStorage.getItem('selectedMonth');
-    if (selectedMonth === month) {
-      localStorage.removeItem('selectedMonth');
-    }
 
     await fetchMonths();
     alert(`Month ${month} deleted successfully`);

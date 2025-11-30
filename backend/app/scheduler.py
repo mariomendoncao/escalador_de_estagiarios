@@ -56,18 +56,26 @@ def generate_schedule(db: Session, month_str: str):
             trainee_date_unavailability[av.trainee_id][av.date].add(av.shift)
 
     # 6. Initialize Trackers
-    # Count full-day unavailabilities (afastamentos) as actual worked shifts
-    trainee_leave_days = defaultdict(int)
+    # Count unavailability days and convert to work credits
+    # Logic: every 2 days with any unavailability counts as 1 worked day
+    trainee_unavailability_days = defaultdict(int)
     for trainee_id, dates in trainee_date_unavailability.items():
-        for date_obj, shifts in dates.items():
-            # If unavailable for ALL shifts on this day, it's a full-day leave
-            if len(shifts) == 3:  # manha, tarde, pernoite
-                trainee_leave_days[trainee_id] += 1
-    
+        # Count unique days with at least one unavailability
+        trainee_unavailability_days[trainee_id] = len(dates)
+
+    # Calculate work credits from unavailabilities: 2 unavailable days = 1 work day
+    trainee_unavailability_credits = {
+        t.id: trainee_unavailability_days[t.id] // 2
+        for t in active_trainees
+    }
+
     # We separate "Weighted Count" (for fairness logic if needed) from "Actual Work Count" (for hard limits)
     trainee_weighted_counts = {t.id: trainee_unavailability_counts[t.id] for t in active_trainees}
-    # Start actual work counts with leave days (afastamentos count as worked shifts)
-    trainee_actual_work_counts = {t.id: trainee_leave_days[t.id] for t in active_trainees}
+    # Start actual work counts with credits from unavailabilities (every 2 days unavailable = 1 work day)
+    trainee_actual_work_counts = {
+        t.id: trainee_unavailability_credits[t.id]
+        for t in active_trainees
+    }
     
     trainee_night_shift_counts = {t.id: 0 for t in active_trainees}
     

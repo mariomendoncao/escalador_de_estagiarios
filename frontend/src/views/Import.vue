@@ -216,9 +216,10 @@ Fim: 07/12/2025 00:00
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../api';
+import { useMonth } from '../composables/useMonth';
 
 const router = useRouter();
-const selectedMonth = ref(localStorage.getItem('selectedMonth') || '');
+const { month: selectedMonth, isValidMonth } = useMonth();
 const traineeListJson = ref('');
 const traineeListMessage = ref('');
 const unavailabilityText = ref('');
@@ -283,7 +284,6 @@ const importTraineeList = async () => {
     console.error('Error importing trainee list:', e);
     if (e.response && e.response.status === 404) {
       traineeListMessage.value = 'Selected month no longer exists. Please select another month.';
-      localStorage.removeItem('selectedMonth');
       setTimeout(() => router.push('/'), 2000);
     } else if (e instanceof SyntaxError) {
       traineeListMessage.value = 'Error parsing JSON. Please check the format.';
@@ -312,7 +312,6 @@ const importUnavailability = async () => {
     console.error('Error importing unavailability:', e);
     if (e.response && e.response.status === 404) {
       unavailabilityMessage.value = 'Selected month no longer exists. Please select another month.';
-      localStorage.removeItem('selectedMonth');
       setTimeout(() => router.push('/'), 2000);
     } else {
       unavailabilityMessage.value = 'Error importing unavailability. Check console for details.';
@@ -386,7 +385,6 @@ const importVacations = async () => {
     console.error('Error importing vacations:', e);
     if (e.response && e.response.status === 404) {
       vacationMessage.value = 'Selected month no longer exists. Please select another month.';
-      localStorage.removeItem('selectedMonth');
       setTimeout(() => router.push('/'), 2000);
     } else {
       vacationMessage.value = 'Error importing vacations. Check console for details.';
@@ -409,7 +407,6 @@ const importCapacity = async () => {
     console.error('Error importing capacity:', e);
     if (e.response && e.response.status === 404) {
       capacityMessage.value = 'Selected month no longer exists. Please select another month.';
-      localStorage.removeItem('selectedMonth');
       setTimeout(() => router.push('/'), 2000);
     } else if (e.response && e.response.status === 400) {
       capacityMessage.value = e.response.data.detail || 'Error importing capacity. Please check the JSON format.';
@@ -420,16 +417,16 @@ const importCapacity = async () => {
 };
 
 const goToTrainees = () => {
-  router.push('/trainees');
+  router.push(`/trainees/${selectedMonth.value}`);
 };
 
 const goToSchedule = () => {
-  router.push('/schedule');
+  router.push(`/schedule/${selectedMonth.value}`);
 };
 
 onMounted(() => {
-  if (!selectedMonth.value) {
-    alert('No month selected. Please select a month first.');
+  if (!isValidMonth.value) {
+    alert('Invalid or missing month. Please select a month.');
     router.push('/');
   }
 });
