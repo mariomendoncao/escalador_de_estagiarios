@@ -8,6 +8,10 @@ def get_monthly_schedule(db: Session, month: str):
     """Get a monthly schedule context (returns None if not found)"""
     return db.query(models.MonthlySchedule).filter(models.MonthlySchedule.month == month).first()
 
+def get_schedule_for_month(db: Session, month: str):
+    """Alias for get_monthly_schedule for compatibility"""
+    return get_monthly_schedule(db, month)
+
 def get_or_create_monthly_schedule(db: Session, month: str):
     """Get or create a monthly schedule context - USE ONLY for explicit creation"""
     db_schedule = get_monthly_schedule(db, month)

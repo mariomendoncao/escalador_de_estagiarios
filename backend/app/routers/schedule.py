@@ -25,6 +25,29 @@ def delete_monthly_schedule(month: str, db: Session = Depends(database.get_db)):
     if not success:
         raise HTTPException(status_code=404, detail="Monthly schedule not found")
     return {"status": "ok", "message": f"Deleted schedule for {month}"}
+    return {"status": "ok", "message": f"Deleted schedule for {month}"}
+
+@router.put("/months/{month}/parameters", response_model=schemas.MonthlySchedule)
+def update_monthly_schedule_parameters(
+    month: str, 
+    params: schemas.MonthlyScheduleCreate, 
+    db: Session = Depends(database.get_db)
+):
+    """Update scheduling parameters for a specific month"""
+    schedule = crud.get_monthly_schedule(db, month)
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Monthly schedule not found")
+    
+    schedule.params_total_shifts = params.params_total_shifts
+    schedule.params_night_shifts = params.params_night_shifts
+    schedule.params_max_consecutive_days_off = params.params_max_consecutive_days_off
+    schedule.params_max_consecutive_work_days = params.params_max_consecutive_work_days
+    schedule.params_unavailability_weight = params.params_unavailability_weight
+    schedule.params_post_night_shift_off = params.params_post_night_shift_off
+    
+    db.commit()
+    db.refresh(schedule)
+    return schedule
 
 # Instructor Capacity
 @router.post("/months/{month}/instructor-capacity/import")
@@ -216,7 +239,7 @@ def create_or_update_assignment(
     # Check if assignment already exists
     schedule = crud.get_schedule_for_month(db, month)
     existing = db.query(models.TraineeAssignment).filter(
-        models.TraineeAssignment.schedule_id == schedule.id,
+        models.TraineeAssignment.monthly_schedule_id == schedule.id,
         models.TraineeAssignment.trainee_id == trainee_id,
         models.TraineeAssignment.date == assignment.date
     ).first()
@@ -230,7 +253,7 @@ def create_or_update_assignment(
     else:
         # Create new assignment
         new_assignment = models.TraineeAssignment(
-            schedule_id=schedule.id,
+            monthly_schedule_id=schedule.id,
             trainee_id=trainee_id,
             date=assignment.date,
             shift=assignment.shift
@@ -261,7 +284,7 @@ def delete_assignment(
     schedule = crud.get_schedule_for_month(db, month)
 
     assignment = db.query(models.TraineeAssignment).filter(
-        models.TraineeAssignment.schedule_id == schedule.id,
+        models.TraineeAssignment.monthly_schedule_id == schedule.id,
         models.TraineeAssignment.trainee_id == trainee_id,
         models.TraineeAssignment.date == date_obj
     ).first()

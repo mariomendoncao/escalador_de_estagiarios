@@ -16,6 +16,14 @@ class MonthlySchedule(Base):
     month = Column(String(7), nullable=False, unique=True)  # YYYY-MM format
     created_at = Column(Date, default=datetime.utcnow)
 
+    # Schedule Parameters
+    params_total_shifts = Column(Integer, default=18, nullable=False)
+    params_night_shifts = Column(Integer, default=2, nullable=False)
+    params_max_consecutive_days_off = Column(Integer, default=3, nullable=False)
+    params_max_consecutive_work_days = Column(Integer, default=6, nullable=False)
+    params_unavailability_weight = Column(Integer, default=1, nullable=False)
+    params_post_night_shift_off = Column(Boolean, default=True, nullable=False)
+
     trainees = relationship("Trainee", back_populates="monthly_schedule", cascade="all, delete-orphan")
     availabilities = relationship("TraineeAvailability", back_populates="monthly_schedule", cascade="all, delete-orphan")
     capacities = relationship("InstructorCapacity", back_populates="monthly_schedule", cascade="all, delete-orphan")

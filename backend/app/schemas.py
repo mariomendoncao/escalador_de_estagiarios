@@ -5,6 +5,12 @@ from .models import Shift
 
 class MonthlyScheduleBase(BaseModel):
     month: str  # YYYY-MM
+    params_total_shifts: int = 18
+    params_night_shifts: int = 2
+    params_max_consecutive_days_off: int = 3
+    params_max_consecutive_work_days: int = 6
+    params_unavailability_weight: int = 1
+    params_post_night_shift_off: bool = True
 
 class MonthlyScheduleCreate(MonthlyScheduleBase):
     pass
