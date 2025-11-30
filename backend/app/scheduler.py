@@ -44,21 +44,29 @@ def generate_schedule(db: Session, month_str: str):
 
     unavailability_lookup = set()
     trainee_unavailability_counts = defaultdict(int)
+    
+    # Group unavailabilities by trainee and date to identify full-day leaves
+    trainee_date_unavailability = defaultdict(lambda: defaultdict(set))
 
     for av in all_availabilities:
         if not av.available:
             unavailability_lookup.add((av.trainee_id, av.date, av.shift))
-            # Count distinct days of unavailability for weight calculation? 
-            # Requirement: "se o estagiario tem 2 indisponibilides elas contam como 1 servico cada"
-            # Assuming this means per shift unavailability or per day? 
-            # Usually unavailability is per shift. Let's count per record.
             trainee_unavailability_counts[av.trainee_id] += params['unavailability_weight']
+            trainee_date_unavailability[av.trainee_id][av.date].add(av.shift)
 
     # 6. Initialize Trackers
-    # Shift counts (starts with unavailability weight)
+    # Count full-day unavailabilities (afastamentos) as actual worked shifts
+    trainee_leave_days = defaultdict(int)
+    for trainee_id, dates in trainee_date_unavailability.items():
+        for date_obj, shifts in dates.items():
+            # If unavailable for ALL shifts on this day, it's a full-day leave
+            if len(shifts) == 3:  # manha, tarde, pernoite
+                trainee_leave_days[trainee_id] += 1
+    
     # We separate "Weighted Count" (for fairness logic if needed) from "Actual Work Count" (for hard limits)
     trainee_weighted_counts = {t.id: trainee_unavailability_counts[t.id] for t in active_trainees}
-    trainee_actual_work_counts = {t.id: 0 for t in active_trainees}
+    # Start actual work counts with leave days (afastamentos count as worked shifts)
+    trainee_actual_work_counts = {t.id: trainee_leave_days[t.id] for t in active_trainees}
     
     trainee_night_shift_counts = {t.id: 0 for t in active_trainees}
     
@@ -93,7 +101,8 @@ def generate_schedule(db: Session, month_str: str):
         # Actually, we update them at the end of the day based on if they worked.
         
         for shift in shifts_order:
-            required_capacity = capacity_map.get((current_date, shift), 0)
+            # Capacity is half of total instructors (rounded down)
+            required_capacity = capacity_map.get((current_date, shift), 0) // 2
             if required_capacity <= 0:
                 continue
             

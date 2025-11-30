@@ -53,7 +53,7 @@
       <!-- Instructor Capacity Table -->
       <div class="bg-white shadow overflow-x-auto sm:rounded-lg">
         <div class="px-4 py-3 border-b border-gray-200 bg-blue-600">
-          <h3 class="text-lg font-medium text-white">Capacidade de Instrutores</h3>
+          <h3 class="text-lg font-medium text-white">Instrutores Disponíveis</h3>
         </div>
         <div class="inline-block min-w-full align-middle">
           <table class="min-w-full border-collapse border border-gray-300 text-xs">
@@ -78,19 +78,19 @@
               <tr class="bg-blue-50">
                 <td class="border border-gray-300 px-2 py-1 font-bold text-gray-900">Manhã</td>
                 <td v-for="day in days" :key="`cap-m-${day.date}`" class="border border-gray-300 px-1 py-1 text-center font-medium" :class="{'bg-green-100': isWeekend(day.date)}">
-                  {{ getCapacity(day.date, 'manha') }}
+                  {{ getRawInstructorCount(day.date, 'manha') }}
                 </td>
               </tr>
               <tr class="bg-blue-50">
                 <td class="border border-gray-300 px-2 py-1 font-bold text-gray-900">Tarde</td>
                 <td v-for="day in days" :key="`cap-t-${day.date}`" class="border border-gray-300 px-1 py-1 text-center font-medium" :class="{'bg-green-100': isWeekend(day.date)}">
-                  {{ getCapacity(day.date, 'tarde') }}
+                  {{ getRawInstructorCount(day.date, 'tarde') }}
                 </td>
               </tr>
               <tr class="bg-blue-50">
                 <td class="border border-gray-300 px-2 py-1 font-bold text-gray-900">Pernoite</td>
                 <td v-for="day in days" :key="`cap-p-${day.date}`" class="border border-gray-300 px-1 py-1 text-center font-medium" :class="{'bg-green-100': isWeekend(day.date)}">
-                  {{ getCapacity(day.date, 'pernoite') }}
+                  {{ getRawInstructorCount(day.date, 'pernoite') }}
                 </td>
               </tr>
             </tbody>
@@ -420,12 +420,19 @@ const getTraineeDayCount = (traineeId) => {
 };
 
 const getShiftCount = (date, shift) => {
-  return schedule.value.filter(s => s.date === date && s.shift === shift).length;
+  const assigned = schedule.value.filter(s => s.date === date && s.shift === shift).length;
+  const capacity = getCapacity(date, shift);
+  return `${assigned}/${capacity}`;
+};
+
+const getRawInstructorCount = (date, shift) => {
+  const cap = capacities.value.find(c => c.date === date && c.shift === shift);
+  return cap ? cap.total_instructors : 0;
 };
 
 const getCapacity = (date, shift) => {
-  const cap = capacities.value.find(c => c.date === date && c.shift === shift);
-  return cap ? cap.total_instructors : 0;
+  const totalInstructors = getRawInstructorCount(date, shift);
+  return Math.floor(totalInstructors / 2);
 };
 
 const isWeekend = (dateStr) => {
