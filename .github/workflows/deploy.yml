@@ -44,9 +44,18 @@ jobs:
               sed -i 's/DOMAIN=.*/DOMAIN=escala-estagiarios.mmendol.com/' .env
             fi
             
-            git fetch origin
+            # Update code from Git
+            git fetch --all
             git reset --hard origin/main
+            git pull origin main
+            
+            echo "Current commit:"
+            git log -1 --oneline
+            
+            # Rebuild and restart
             docker compose down
             docker compose build --no-cache
             docker compose up -d
+            
+            echo "Deploy completed!"
           EOF
