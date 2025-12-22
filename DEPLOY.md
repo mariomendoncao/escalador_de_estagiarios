@@ -1,103 +1,285 @@
-# Guia de Deploy para VPS Hostinger
+# Guia de Deploy - Escala Estagiários
 
-## Problema Identificado
+Sistema de escalonamento de estagiários com deploy automatizado via Docker + Traefik + GitHub Actions.
 
-O frontend estava configurado com URL hardcoded (`http://localhost:8000`) para a API. Isso fazia com que o navegador do usuário tentasse se conectar ao `localhost` da máquina dele, não do servidor.
+## 🏗️ Arquitetura
 
-## Solução Implementada
+- **Backend**: Python FastAPI + MySQL
+- **Frontend**: Vue 3 + Vite + Tailwind CSS
+- **Reverse Proxy**: Traefik (HTTPS automático)
+- **CI/CD**: GitHub Actions
+- **Domínio**: `escala-estagiarios.mmendol.com`
 
-A URL da API foi configurada diretamente no docker-compose.yml como `http://mmendol.com:8000`.
+---
 
-## Passos para Deploy na VPS Hostinger (92.112.178.78)
+## 💻 Desenvolvimento Local
 
-### 1. Fazer upload das alterações para a VPS
+### Requisitos
+- Docker e Docker Compose
+- Git
 
-Envie os arquivos atualizados:
-- `frontend/src/api.js`
-- `frontend/Dockerfile`
-- `docker-compose.yml`
-
-### 2. Rebuild e restart dos containers
-
-```bash
-# Parar os containers
-docker-compose down
-
-# Rebuild com a nova configuração
-docker-compose build --no-cache frontend
-
-# Subir os containers
-docker-compose up -d
-```
-
-### 3. Verificar se está funcionando
+### Como rodar
 
 ```bash
-# Ver logs do frontend
-docker-compose logs frontend
+# Clonar repositório
+git clone <repo-url>
+cd escala_estagiarios
 
-# Ver logs da API
-docker-compose logs api
+# Subir aplicação (hot reload habilitado)
+docker compose -f docker-compose.dev.yml up
 
-# Ver status
-docker-compose ps
+# Rebuild se necessário
+docker compose -f docker-compose.dev.yml up --build
+
+# Parar
+docker compose -f docker-compose.dev.yml down
 ```
 
-### 4. Testar no navegador
+### Acessar localmente
 
-Acesse: `http://SEU_IP_OU_DOMINIO`
+- **Frontend**: http://localhost
+- **API Docs**: http://localhost:8000/docs
+- **Adminer**: http://localhost:8080
 
-A aplicação deve conseguir se comunicar com a API agora.
+---
 
-## Configuração de Firewall (se necessário)
+## 🚀 Deploy em Produção (VPS)
 
-Certifique-se de que as portas estão abertas:
+### Pré-requisitos na VPS
 
-- Porta 80 (frontend)
-- Porta 8000 (API)
-- Porta 3306 (MySQL - opcional, apenas se precisar acesso externo)
-- Porta 8080 (Adminer - opcional)
+1. **Traefik configurado e rodando**
+   - Rede Docker `proxy` criada
+   - Certificados Let's Encrypt configurados
+   - Portas 80 e 443 abertas
 
-## Troubleshooting
+2. **Usuário `deploy` configurado**
+   - Com acesso SSH via chave pública
+   - Permissões para Docker
 
-### Se a API ainda não responder:
-
-1. Verifique se os containers estão rodando:
-   ```bash
-   docker-compose ps
+3. **DNS configurado**
+   ```
+   Tipo: A
+   Nome: escala_estagiarios
+   Valor: <IP_DA_VPS>
    ```
 
-2. Verifique os logs da API:
+### Preparação Inicial na VPS
+
+```bash
+# Conectar como usuário deploy
+ssh deploy@<VPS_HOST>
+
+# Criar diretório do projeto
+mkdir -p /srv/docker/escala-estagiarios
+cd /srv/docker/escala-estagiarios
+
+# Clonar repositório
+git clone <repo-url> .
+
+# Criar arquivo .env com credenciais de produção
+cp .env.example .env
+nano .env
+```
+
+**Editar `.env` com credenciais seguras:**
+
+```bash
+MYSQL_DATABASE=intern_schedule
+MYSQL_USER=escala_user
+MYSQL_PASSWORD=<SENHA_FORTE_ALEATÓRIA>
+MYSQL_ROOT_PASSWORD=<SENHA_ROOT_FORTE>
+DATABASE_URL=mysql+pymysql://escala_user:<SENHA_FORTE_ALEATÓRIA>@db/intern_schedule
+DOMAIN=escala-estagiarios.mmendol.com
+```
+
+> ⚠️ **Importante**: Use senhas fortes e diferentes para produção!
+
+### Deploy Manual (Primeira vez)
+
+```bash
+cd /srv/docker/escala-estagiarios
+
+# Build e subir containers
+docker compose build --no-cache
+docker compose up -d
+
+# Verificar logs
+docker compose logs -f
+
+# Verificar status
+docker compose ps
+```
+
+### Configurar GitHub Actions
+
+1. **Adicionar Secrets no GitHub**:
+   - Ir em: `Settings` → `Secrets and variables` → `Actions`
+   - Adicionar:
+     - `VPS_HOST`: IP ou domínio da VPS
+     - `VPS_SSH_KEY`: Chave privada SSH do usuário `deploy`
+
+2. **Push para main**:
    ```bash
-   docker-compose logs api
+   git push origin main
    ```
 
-3. Teste se a API responde internamente:
+3. **Acompanhar deploy**:
+   - GitHub → Actions → Ver workflow rodando
+   - VPS: `docker compose logs -f`
+
+### Deploy Automático (após configuração)
+
+Após a configuração inicial, o deploy é **100% automático**:
+
+1. Fazer commit e push para `main`
+2. GitHub Actions detecta mudança
+3. Conecta via SSH na VPS
+4. Atualiza código (`git pull`)
+5. Rebuild containers
+6. Reinicia aplicação
+7. Traefik roteia automaticamente com HTTPS
+
+---
+
+## 🌐 Acessar Aplicação
+
+- **Frontend**: https://escala-estagiarios.mmendol.com
+- **API**: https://escala-estagiarios.mmendol.com/api
+
+> ✅ HTTPS automático via Let's Encrypt (Traefik)
+
+---
+
+## 🔍 Troubleshooting
+
+### Verificar containers rodando
+
+```bash
+docker compose ps
+```
+
+### Ver logs
+
+```bash
+# Todos os serviços
+docker compose logs -f
+
+# Apenas API
+docker compose logs -f api
+
+# Apenas Frontend
+docker compose logs -f frontend
+
+# Apenas Database
+docker compose logs -f db
+```
+
+### Rebuild completo
+
+```bash
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+```
+
+### Acessar banco de dados
+
+```bash
+# Via docker exec
+docker exec -it escala-db mysql -u user -p
+
+# Ou usar Adminer localmente (apenas dev)
+# http://localhost:8080
+```
+
+### Verificar integração Traefik
+
+```bash
+# Ver containers na rede proxy
+docker network inspect proxy
+
+# Ver logs do Traefik (se tiver acesso)
+docker logs traefik
+```
+
+### API não responde
+
+1. Verificar se container está rodando:
+   ```bash
+   docker compose ps
+   ```
+
+2. Ver logs da API:
+   ```bash
+   docker compose logs api
+   ```
+
+3. Testar internamente na VPS:
    ```bash
    curl http://localhost:8000/docs
    ```
 
-4. Verifique o firewall:
-   ```bash
-   # No Ubuntu/Debian
-   sudo ufw status
+### Frontend não carrega
 
-   # Se necessário, abra as portas
-   sudo ufw allow 80
-   sudo ufw allow 8000
+1. Verificar se build foi feito com URL correta:
+   ```bash
+   docker compose logs frontend
    ```
 
-### Se o frontend não conseguir se conectar à API:
+2. Verificar se VITE_API_URL está correto no build
 
-1. Abra o console do navegador (F12) em `http://mmendol.com`
-2. Verifique se há erros de CORS ou conexão
-3. Confirme que a URL da API no console está correta (`http://mmendol.com:8000`)
-4. Verifique se a porta 8000 está aberta no firewall
+3. Abrir DevTools do navegador (F12) e ver erros de console
 
-## Configuração do Domínio
+### Certificado HTTPS não funciona
 
-Certifique-se de que o DNS do domínio `mmendol.com` aponta para o IP `92.112.178.78`.
+1. Verificar DNS:
+   ```bash
+   nslookup escala-estagiarios.mmendol.com
+   ```
 
-## Nota sobre CORS
+2. Verificar labels Traefik:
+   ```bash
+   docker inspect escala-frontend | grep traefik
+   docker inspect escala-api | grep traefik
+   ```
 
-O backend já tem CORS configurado para aceitar requisições. Se houver problemas, verifique os logs da API.
+3. Ver logs do Traefik para erros de certificado
+
+---
+
+## 📝 Estrutura de Arquivos
+
+```
+escala_estagiarios/
+├── .github/
+│   └── workflows/
+│       └── deploy.yml          # CI/CD automático
+├── backend/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── app/
+├── frontend/
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   ├── package.json
+│   └── src/
+├── docker-compose.yml          # Produção (Traefik)
+├── docker-compose.dev.yml      # Desenvolvimento (portas expostas)
+├── .env                        # Variáveis de ambiente (não versionado)
+├── .env.example                # Template de .env
+├── .gitignore
+├── DEPLOY.md                   # Este arquivo
+└── README.md
+```
+
+---
+
+## 🔐 Segurança
+
+- ✅ HTTPS obrigatório em produção
+- ✅ Credenciais em variáveis de ambiente
+- ✅ `.env` não versionado no Git
+- ✅ Banco de dados isolado (rede interna)
+- ✅ Adminer removido em produção
+- ✅ Deploy via SSH com chave privada
+

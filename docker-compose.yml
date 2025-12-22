@@ -1,48 +1,99 @@
+version: "3.9"
+
+networks:
+  proxy:
+    external: true
+  internal:
+    driver: bridge
+
 services:
   db:
     image: mysql:8.0
-    # command: --default-authentication-plugin=mysql_native_password
-    restart: always
+    container_name: escala-db
+    restart: unless-stopped
     environment:
-      MYSQL_DATABASE: intern_schedule
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    networks:
+      - internal
+    volumes:
+      - ./mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
-    volumes:
-      - ./mysql_data:/var/lib/mysql
-    ports:
-      - "3306:3306"
 
   api:
     build: ./backend
+    container_name: escala-api
+    restart: unless-stopped
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
-    ports:
-      - "8000:8000"
     environment:
-      DATABASE_URL: mysql+pymysql://user:password@db/intern_schedule
+      DATABASE_URL: ${DATABASE_URL}
+    networks:
+      - proxy
+      - internal
     depends_on:
       db:
         condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      
+      # HTTP
+      - "traefik.http.routers.escala-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.escala-api.entrypoints=web"
+      
+      # HTTPS
+      - "traefik.http.routers.escala-api-secure.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.escala-api-secure.entrypoints=websecure"
+      - "traefik.http.routers.escala-api-secure.tls=true"
+      - "traefik.http.routers.escala-api-secure.tls.certresolver=letsencrypt"
+      
+      # Redirect HTTP → HTTPS
+      - "traefik.http.middlewares.escala-api-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.escala-api.middlewares=escala-api-redirect"
+      
+      # Strip /api prefix before forwarding to backend
+      - "traefik.http.middlewares.escala-api-stripprefix.stripprefix.prefixes=/api"
+      - "traefik.http.routers.escala-api-secure.middlewares=escala-api-stripprefix"
+      
+      # Service port
+      - "traefik.http.services.escala-api.loadbalancer.server.port=8000"
 
   frontend:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: http://mmendol.com:8000
-    ports:
-      - "80:80"
+        VITE_API_URL: https://${DOMAIN}/api
+    container_name: escala-frontend
+    restart: unless-stopped
+    networks:
+      - proxy
     depends_on:
       - api
-
-  adminer:
-    image: adminer
-    restart: always
-    ports:
-      - "8080:8080"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      
+      # HTTP
+      - "traefik.http.routers.escala-frontend.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.escala-frontend.entrypoints=web"
+      
+      # HTTPS
+      - "traefik.http.routers.escala-frontend-secure.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.escala-frontend-secure.entrypoints=websecure"
+      - "traefik.http.routers.escala-frontend-secure.tls=true"
+      - "traefik.http.routers.escala-frontend-secure.tls.certresolver=letsencrypt"
+      
+      # Redirect HTTP → HTTPS
+      - "traefik.http.middlewares.escala-frontend-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.escala-frontend.middlewares=escala-frontend-redirect"
+      
+      # Service port
+      - "traefik.http.services.escala-frontend.loadbalancer.server.port=80"
 
 
