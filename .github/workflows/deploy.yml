@@ -31,12 +31,21 @@ jobs:
         run: |
           ssh deploy@${{ secrets.VPS_HOST }} << 'EOF'
             set -e
-
             cd /srv/docker/escala-estagiarios
-
+            
+            # Ensure .env file exists with correct DOMAIN
+            if [ ! -f .env ]; then
+              cp .env.example .env
+              sed -i 's/change_me_in_production/'"$(openssl rand -base64 32)"'/g' .env
+            fi
+            
+            # Ensure DOMAIN is set correctly
+            if ! grep -q "DOMAIN=escala-estagiarios.mmendol.com" .env; then
+              sed -i 's/DOMAIN=.*/DOMAIN=escala-estagiarios.mmendol.com/' .env
+            fi
+            
             git fetch origin
             git reset --hard origin/main
-
             docker compose down
             docker compose build --no-cache
             docker compose up -d
