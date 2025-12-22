@@ -47,6 +47,11 @@ jobs:
             fi
             
             echo "➡️ Sincronizando código"
+            # Skip mysql_data to avoid permission issues
+            git config core.sparseCheckout true
+            echo '/*' > .git/info/sparse-checkout
+            echo '!mysql_data' >> .git/info/sparse-checkout
+            
             git fetch origin
             git reset --hard origin/main
             
