@@ -44,11 +44,11 @@ services:
       - "traefik.docker.network=proxy"
       
       # HTTP
-      - "traefik.http.routers.escala-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.escala-api.rule=Host(`api.${DOMAIN}`)"
       - "traefik.http.routers.escala-api.entrypoints=web"
       
       # HTTPS
-      - "traefik.http.routers.escala-api-secure.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.escala-api-secure.rule=Host(`api.${DOMAIN}`)"
       - "traefik.http.routers.escala-api-secure.entrypoints=websecure"
       - "traefik.http.routers.escala-api-secure.tls=true"
       - "traefik.http.routers.escala-api-secure.tls.certresolver=letsencrypt"
@@ -57,10 +57,6 @@ services:
       - "traefik.http.middlewares.escala-api-redirect.redirectscheme.scheme=https"
       - "traefik.http.routers.escala-api.middlewares=escala-api-redirect"
       
-      # Strip /api prefix before forwarding to backend
-      - "traefik.http.middlewares.escala-api-stripprefix.stripprefix.prefixes=/api"
-      - "traefik.http.routers.escala-api-secure.middlewares=escala-api-stripprefix"
-      
       # Service port
       - "traefik.http.services.escala-api.loadbalancer.server.port=8000"
 
@@ -68,7 +64,7 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: https://${DOMAIN}/api
+        VITE_API_URL: https://api.${DOMAIN}
     container_name: escala-frontend
     restart: unless-stopped
     networks:
