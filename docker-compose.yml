@@ -57,6 +57,14 @@ services:
       - "traefik.http.middlewares.escala-api-redirect.redirectscheme.scheme=https"
       - "traefik.http.routers.escala-api.middlewares=escala-api-redirect"
       
+      # CORS Headers
+      - "traefik.http.middlewares.escala-api-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS"
+      - "traefik.http.middlewares.escala-api-cors.headers.accesscontrolalloworiginlist=https://${DOMAIN},https://api.${DOMAIN}"
+      - "traefik.http.middlewares.escala-api-cors.headers.accesscontrolallowheaders=Content-Type,Authorization"
+      - "traefik.http.middlewares.escala-api-cors.headers.accesscontrolmaxage=100"
+      - "traefik.http.middlewares.escala-api-cors.headers.addvaryheader=true"
+      - "traefik.http.routers.escala-api-secure.middlewares=escala-api-cors"
+      
       # Service port
       - "traefik.http.services.escala-api.loadbalancer.server.port=8000"
 
