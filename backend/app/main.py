@@ -13,7 +13,7 @@ Base.metadata.create_all(bind=engine)
 with Session(engine) as db:
     shift_service.load_shifts_from_json(db)
 
-app = FastAPI(title="Intern Schedule System")
+app = FastAPI(title="Intern Schedule System", redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,
