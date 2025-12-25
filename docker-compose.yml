@@ -61,12 +61,10 @@ services:
       - "traefik.http.services.escala-api.loadbalancer.server.port=8000"
 
   frontend:
-    env_file:
-      - .env
     build:
       context: ./frontend
       args:
-        VITE_API_URL: https://api.${DOMAIN}
+        VITE_API_URL: https://api.escala-estagiarios.mmendol.com
     container_name: escala-frontend
     restart: unless-stopped
     networks:
