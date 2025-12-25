@@ -11,10 +11,12 @@ router = APIRouter(
 )
 
 @router.post("/", response_model=schemas.Trainee)
+@router.post("", response_model=schemas.Trainee, include_in_schema=False)
 def create_trainee(month: str, trainee: schemas.TraineeCreate, db: Session = Depends(database.get_db)):
     return crud.create_trainee(db=db, month=month, trainee=trainee)
 
 @router.get("/", response_model=List[schemas.Trainee])
+@router.get("", response_model=List[schemas.Trainee], include_in_schema=False)
 def read_trainees(month: str, db: Session = Depends(database.get_db)):
     return crud.get_trainees_for_month(db, month=month)
 
