@@ -1,5 +1,5 @@
 # Sistema de Escalonamento de Estagiários
-<!-- Build: 2025-12-24 23:54 -->
+<!-- Build: 2025-12-25 00:08 -->
 
 Sistema web para gerenciamento e escalonamento automático de estagiários com base em disponibilidade de instrutores.
 
