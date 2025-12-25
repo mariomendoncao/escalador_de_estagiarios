@@ -61,6 +61,8 @@ services:
       - "traefik.http.services.escala-api.loadbalancer.server.port=8000"
 
   frontend:
+    env_file:
+      - .env
     build:
       context: ./frontend
       args:
