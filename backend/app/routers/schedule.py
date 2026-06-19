@@ -261,6 +261,17 @@ def get_instructor_capacity(month: str, db: Session = Depends(database.get_db)):
     """Get instructor capacity for a specific month"""
     return crud.get_capacities(db, month)
 
+@router.put("/months/{month}/instructor-capacity", response_model=schemas.InstructorCapacity)
+def update_instructor_capacity(
+    month: str,
+    capacity: schemas.InstructorCapacityCreate,
+    db: Session = Depends(database.get_db)
+):
+    """Manually create or update the instructor capacity for a single date/shift"""
+    if capacity.total_instructors < 0:
+        raise HTTPException(status_code=400, detail="total_instructors must be >= 0")
+    return crud.create_instructor_capacity(db, month, capacity)
+
 # Schedule Generation
 @router.post("/months/{month}/schedule/generate")
 def generate_schedule(month: str, db: Session = Depends(database.get_db)):

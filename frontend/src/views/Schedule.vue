@@ -93,13 +93,26 @@
                 <th class="sticky left-0 z-10 bg-slate-50/90 px-2 py-1 text-right text-[10px] font-medium text-slate-600 border-b border-r border-slate-200">
                   Instr. (M)
                 </th>
-                <td 
-                  v-for="day in days" 
-                  :key="`cap-m-${day.date}`" 
-                  class="px-0 py-1 text-center text-[10px] font-bold text-slate-600 border-b border-r border-slate-200"
+                <td
+                  v-for="day in days"
+                  :key="`cap-m-${day.date}`"
+                  class="px-0 py-1 text-center text-[10px] font-bold text-slate-600 border-b border-r border-slate-200 cursor-pointer hover:bg-indigo-50"
                   :class="{'bg-slate-100/50': isWeekend(day.date)}"
+                  @click="startEditCapacity(day.date, 'manha')"
                 >
-                  {{ getRawInstructorCount(day.date, 'manha') }}
+                  <input
+                    v-if="isEditingCapacity(day.date, 'manha')"
+                    ref="capacityInput"
+                    type="number"
+                    min="0"
+                    v-model="capacityEditValue"
+                    @blur="saveCapacity(day.date, 'manha')"
+                    @keyup.enter="$event.target.blur()"
+                    @keyup.esc="cancelCapacityEdit"
+                    @click.stop
+                    class="w-7 text-center text-[10px] font-bold border border-indigo-400 rounded outline-none"
+                  >
+                  <span v-else>{{ getRawInstructorCount(day.date, 'manha') }}</span>
                 </td>
                 <td class="bg-slate-50 border-b border-slate-300"></td>
                 <td class="bg-slate-50 border-b border-slate-300"></td>
@@ -109,13 +122,26 @@
                 <th class="sticky left-0 z-10 bg-slate-50/90 px-2 py-1 text-right text-[10px] font-medium text-slate-600 border-b border-r border-slate-200">
                   Instr. (T)
                 </th>
-                <td 
-                  v-for="day in days" 
-                  :key="`cap-t-${day.date}`" 
-                  class="px-0 py-1 text-center text-[10px] font-bold text-slate-600 border-b border-r border-slate-200"
+                <td
+                  v-for="day in days"
+                  :key="`cap-t-${day.date}`"
+                  class="px-0 py-1 text-center text-[10px] font-bold text-slate-600 border-b border-r border-slate-200 cursor-pointer hover:bg-indigo-50"
                   :class="{'bg-slate-100/50': isWeekend(day.date)}"
+                  @click="startEditCapacity(day.date, 'tarde')"
                 >
-                  {{ getRawInstructorCount(day.date, 'tarde') }}
+                  <input
+                    v-if="isEditingCapacity(day.date, 'tarde')"
+                    ref="capacityInput"
+                    type="number"
+                    min="0"
+                    v-model="capacityEditValue"
+                    @blur="saveCapacity(day.date, 'tarde')"
+                    @keyup.enter="$event.target.blur()"
+                    @keyup.esc="cancelCapacityEdit"
+                    @click.stop
+                    class="w-7 text-center text-[10px] font-bold border border-indigo-400 rounded outline-none"
+                  >
+                  <span v-else>{{ getRawInstructorCount(day.date, 'tarde') }}</span>
                 </td>
                 <td class="bg-slate-50 border-b border-slate-300"></td>
                 <td class="bg-slate-50 border-b border-slate-300"></td>
@@ -125,13 +151,26 @@
                 <th class="sticky left-0 z-10 bg-slate-50/90 px-2 py-1 text-right text-[10px] font-medium text-slate-600 border-b border-r border-slate-200">
                   Instr. (P)
                 </th>
-                <td 
-                  v-for="day in days" 
-                  :key="`cap-p-${day.date}`" 
-                  class="px-0 py-1 text-center text-[10px] font-bold text-slate-600 border-b border-r border-slate-200"
+                <td
+                  v-for="day in days"
+                  :key="`cap-p-${day.date}`"
+                  class="px-0 py-1 text-center text-[10px] font-bold text-slate-600 border-b border-r border-slate-200 cursor-pointer hover:bg-indigo-50"
                   :class="{'bg-slate-100/50': isWeekend(day.date)}"
+                  @click="startEditCapacity(day.date, 'pernoite')"
                 >
-                  {{ getRawInstructorCount(day.date, 'pernoite') }}
+                  <input
+                    v-if="isEditingCapacity(day.date, 'pernoite')"
+                    ref="capacityInput"
+                    type="number"
+                    min="0"
+                    v-model="capacityEditValue"
+                    @blur="saveCapacity(day.date, 'pernoite')"
+                    @keyup.enter="$event.target.blur()"
+                    @keyup.esc="cancelCapacityEdit"
+                    @click.stop
+                    class="w-7 text-center text-[10px] font-bold border border-indigo-400 rounded outline-none"
+                  >
+                  <span v-else>{{ getRawInstructorCount(day.date, 'pernoite') }}</span>
                 </td>
                 <td class="bg-slate-50 border-b border-slate-300"></td>
                 <td class="bg-slate-50 border-b border-slate-300"></td>
@@ -288,7 +327,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMonth } from '../composables/useMonth';
 import api from '../api';
@@ -305,6 +344,10 @@ const availabilities = ref([]);
 const editingCell = ref(null);
 const dropdownPosition = ref({ top: 0, left: 0 });
 const loadingCell = ref(null);
+const editingCapacity = ref(null);
+const capacityEditValue = ref('');
+const capacityInput = ref(null);
+let savingCapacity = false;
 const scheduleParams = ref({
   params_total_shifts: 0,
   params_night_shifts: 0,
@@ -507,6 +550,54 @@ const getShiftCount = (date, shift) => {
 const getRawInstructorCount = (date, shift) => {
   const cap = capacities.value.find(c => c.date === date && c.shift === shift);
   return cap ? cap.total_instructors : 0;
+};
+
+const isEditingCapacity = (date, shift) => {
+  return editingCapacity.value?.date === date && editingCapacity.value?.shift === shift;
+};
+
+const startEditCapacity = async (date, shift) => {
+  capacityEditValue.value = String(getRawInstructorCount(date, shift));
+  editingCapacity.value = { date, shift };
+  await nextTick();
+  const el = Array.isArray(capacityInput.value) ? capacityInput.value[0] : capacityInput.value;
+  if (el) {
+    el.focus();
+    el.select();
+  }
+};
+
+const cancelCapacityEdit = () => {
+  editingCapacity.value = null;
+};
+
+const saveCapacity = async (date, shift) => {
+  if (savingCapacity || !editingCapacity.value) return;
+
+  const newValue = parseInt(capacityEditValue.value, 10);
+  const currentValue = getRawInstructorCount(date, shift);
+
+  // Invalid or unchanged: just close the editor
+  if (isNaN(newValue) || newValue < 0 || newValue === currentValue) {
+    editingCapacity.value = null;
+    return;
+  }
+
+  savingCapacity = true;
+  try {
+    await api.put(`/months/${month.value}/instructor-capacity`, {
+      date,
+      shift,
+      total_instructors: newValue
+    });
+    editingCapacity.value = null;
+    await fetchData();
+  } catch (e) {
+    console.error('Error updating capacity:', e);
+    alert('Erro ao atualizar quantidade de instrutores');
+  } finally {
+    savingCapacity = false;
+  }
 };
 
 const getCapacity = (date, shift) => {
